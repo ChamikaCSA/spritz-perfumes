@@ -18,7 +18,7 @@ export default async function BrandsPage() {
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-6">
+      <ul className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 lg:grid-cols-3">
         {brands.map((brand) => (
           <li key={brand.id}>
             <Link
@@ -52,7 +52,7 @@ export default async function BrandsPage() {
                   </div>
                 )}
               </div>
-              <div className="mt-2.5 sm:mt-4">
+              <div className="px-3 pb-4 pt-2.5 sm:px-4 sm:pb-5 sm:pt-3">
                 <h2 className="truncate font-display text-lg group-hover:text-amber sm:text-2xl">
                   {brand.name}
                 </h2>

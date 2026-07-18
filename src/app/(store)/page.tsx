@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { HomeHero } from "@/components/store/home-hero";
+import { HousesMarquee } from "@/components/store/houses-marquee";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductCard } from "@/components/store/product-card";
 import {
@@ -21,6 +22,7 @@ export default async function HomePage() {
   return (
     <>
       <HomeHero />
+      <HousesMarquee brands={brands} />
 
       <section className="grid md:grid-cols-2">
         <Link
@@ -111,7 +113,7 @@ export default async function HomePage() {
               All brands
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-6">
+          <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 lg:grid-cols-3">
             {brands.map((brand) => (
               <Link
                 key={brand.id}
@@ -234,7 +236,7 @@ function ProductRail({
             View all
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-6">
+        <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 md:grid-cols-4">
           {products.map((product, i) => (
             <ProductCard key={product.id} product={product} index={i} />
           ))}

@@ -25,6 +25,7 @@ export function ProductCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.5, delay: index * 0.06 }}
+      className="bg-background"
     >
       <Link href={`/product/${product.slug}`} className="group block">
         <div className="relative aspect-4/5 overflow-hidden bg-muted">
@@ -49,7 +50,7 @@ export function ProductCard({
             )}
           </div>
         </div>
-        <div className="mt-3 space-y-1">
+        <div className="space-y-1 px-3 pb-4 pt-3">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
             {product.brand?.name}
           </p>

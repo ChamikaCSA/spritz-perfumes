@@ -103,7 +103,7 @@ export default async function BrandDetailPage({ params }: { params: Params }) {
             No fragrances from this house yet.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+          <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 md:grid-cols-3 lg:grid-cols-4">
             {products.map((product, i) => (
               <ProductCard key={product.id} product={product} index={i} />
             ))}

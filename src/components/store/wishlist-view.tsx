@@ -66,11 +66,11 @@ export function WishlistView({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-10">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 md:grid-cols-3 lg:grid-cols-4">
         {saved.map((product, i) => (
-          <div key={product.id} className="space-y-3">
+          <div key={product.id} className="flex flex-col bg-background">
             <ProductCard product={product} index={i} />
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 px-3 pb-4">
               <button
                 type="button"
                 onClick={() => moveToCart(product)}

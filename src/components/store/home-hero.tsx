@@ -2,8 +2,78 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  type MotionValue,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import { useRef } from "react";
+
+function buildSparks() {
+  const seeds = [
+    [58, 42], [64, 55], [72, 38], [78, 48], [68, 62], [82, 58],
+    [55, 50], [74, 70], [61, 34], [86, 44], [70, 28], [52, 66],
+    [66, 46], [80, 36], [75, 52], [60, 58], [88, 52], [54, 38],
+    [69, 74], [77, 64], [63, 48], [84, 30], [71, 42], [57, 72],
+    [65, 32], [79, 68], [73, 24], [50, 54], [67, 56], [81, 46],
+    [59, 28], [76, 40], [85, 62], [62, 68], [70, 50], [53, 44],
+    [90, 40], [48, 60], [66, 22], [74, 58], [83, 74], [56, 36],
+    [69, 36], [78, 28], [61, 76], [87, 56], [72, 66], [64, 40],
+  ];
+
+  return seeds.map(([left, top], i) => ({
+    left: `${left}%`,
+    top: `${top}%`,
+    size: 1.25 + (i % 4) * 0.4,
+    delay: (i * 0.35) % 8,
+    duration: 7.5 + (i % 7) * 0.9,
+    drift: i % 2 === 0 ? 1 : -1,
+  }));
+}
+
+const SPARKS = buildSparks();
+
+function HeroSparks({ scrollY }: { scrollY: MotionValue<number> }) {
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) return null;
+
+  return (
+    <motion.div
+      style={{ y: scrollY }}
+      className="pointer-events-none absolute inset-0 z-1 overflow-hidden"
+      aria-hidden
+    >
+      {SPARKS.map((spark, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full bg-amber-soft"
+          style={{
+            left: spark.left,
+            top: spark.top,
+            width: spark.size,
+            height: spark.size,
+            boxShadow: `0 0 ${spark.size * 3}px rgba(232, 213, 163, 0.7)`,
+          }}
+          animate={{
+            y: [0, -140, -260],
+            x: [0, spark.drift * 14, spark.drift * -8],
+            opacity: [0, 0.9, 0],
+            scale: [0.4, 1, 0.3],
+          }}
+          transition={{
+            duration: spark.duration,
+            repeat: Infinity,
+            ease: "easeOut",
+            delay: spark.delay,
+          }}
+        />
+      ))}
+    </motion.div>
+  );
+}
 
 export function HomeHero() {
   const ref = useRef<HTMLElement>(null);
@@ -25,32 +95,25 @@ export function HomeHero() {
         className="absolute inset-0 origin-center"
       >
         <Image
-          src="/home/hero-mist.png"
+          src="/home/hero.png"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-cover object-[62%_center]"
         />
       </motion.div>
 
-      <div
-        className="absolute inset-0 bg-linear-to-t from-background via-background/75 to-background/25"
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0 bg-linear-to-r from-background/80 via-background/35 to-transparent"
-        aria-hidden
-      />
+      <HeroSparks scrollY={mistY} />
 
-      <motion.div
-        style={{ y: mistY }}
-        className="pointer-events-none absolute inset-0"
+      <div
+        className="absolute inset-0 z-2 bg-linear-to-t from-background via-background/75 to-background/25"
         aria-hidden
-      >
-        <div className="absolute -left-1/4 bottom-1/4 h-[40vh] w-[50vw] rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.12),transparent_70%)] blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-[45vh] w-[40vw] rounded-full bg-[radial-gradient(circle,rgba(120,80,30,0.18),transparent_65%)] blur-3xl" />
-      </motion.div>
+      />
+      <div
+        className="absolute inset-0 z-2 bg-linear-to-r from-background/80 via-background/35 to-transparent"
+        aria-hidden
+      />
 
       <motion.div
         style={{ opacity: contentOpacity }}
@@ -62,16 +125,18 @@ export function HomeHero() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="mb-4 text-xs uppercase tracking-[0.35em] text-amber"
         >
-          Full size &amp; decants
+          Sealed &amp; authentic
         </motion.p>
         <motion.h1
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-display text-[clamp(3.75rem,14vw,8rem)] leading-[0.88] tracking-tight text-foreground"
+          className="max-w-xl font-display text-[clamp(2.75rem,8vw,5.25rem)] leading-[0.95] tracking-tight text-foreground"
         >
-          Spritz
-          <span className="mt-1 block text-amber-soft/90">Perfumes</span>
+          Fragrance from
+          <span className="mt-1 block text-amber-soft/90">
+            houses worth collecting.
+          </span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 16 }}
@@ -79,7 +144,8 @@ export function HomeHero() {
           transition={{ duration: 0.7, delay: 0.45 }}
           className="mt-6 max-w-md text-base text-muted-foreground sm:text-lg"
         >
-          Sealed authenticity — live with a scent before you commit.
+          Live with a scent before you commit — full bottles when you&apos;re
+          sure, fine decants when you want to try first.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
