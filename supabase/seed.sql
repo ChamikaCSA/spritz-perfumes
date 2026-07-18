@@ -1,0 +1,168 @@
+-- Seed catalog for Spritz Perfumes demo
+
+insert into public.brands (id, name, slug, description, country, website) values
+  (
+    'a1000000-0000-4000-8000-000000000001',
+    'Chanel',
+    'chanel',
+    'Timeless French haute parfumerie',
+    'France',
+    'https://www.chanel.com'
+  ),
+  (
+    'a1000000-0000-4000-8000-000000000002',
+    'Dior',
+    'dior',
+    'Bold florals and refined woods',
+    'France',
+    'https://www.dior.com'
+  ),
+  (
+    'a1000000-0000-4000-8000-000000000003',
+    'Creed',
+    'creed',
+    'Heritage house of niche scents',
+    'United Kingdom',
+    'https://www.creedboutique.com'
+  ),
+  (
+    'a1000000-0000-4000-8000-000000000004',
+    'Tom Ford',
+    'tom-ford',
+    'Modern luxury with edge',
+    'United States',
+    'https://www.tomford.com'
+  ),
+  (
+    'a1000000-0000-4000-8000-000000000005',
+    'Maison Francis Kurkdjian',
+    'mfk',
+    'Architectural contemporary fragrances',
+    'France',
+    'https://www.franciskurkdjian.com'
+  )
+on conflict (id) do update set
+  name = excluded.name,
+  slug = excluded.slug,
+  description = excluded.description,
+  country = excluded.country,
+  website = excluded.website;
+
+insert into public.products (id, brand_id, name, slug, concentration, description, notes, images, is_active) values
+(
+  'b1000000-0000-4000-8000-000000000001',
+  'a1000000-0000-4000-8000-000000000001',
+  'Bleu de Chanel',
+  'bleu-de-chanel',
+  'EDP',
+  'A woody aromatic composed around a heart of cedar and sandalwood — cool, magnetic, endlessly wearable.',
+  '{"top":["Citrus","Mint","Pink Pepper"],"heart":["Ginger","Nutmeg","Jasmine"],"base":["Incense","Cedar","Sandalwood"]}'::jsonb,
+  array['/products/bleu-de-chanel.png'],
+  true
+),
+(
+  'b1000000-0000-4000-8000-000000000002',
+  'a1000000-0000-4000-8000-000000000002',
+  'Sauvage',
+  'sauvage',
+  'EDP',
+  'Raw freshness meets warm amber — bergamot lightning over a desert of woods and spices.',
+  '{"top":["Bergamot","Pepper"],"heart":["Lavender","Sichuan Pepper","Star Anise"],"base":["Ambroxan","Cedar","Labdanum"]}'::jsonb,
+  array['/products/sauvage.png'],
+  true
+),
+(
+  'b1000000-0000-4000-8000-000000000003',
+  'a1000000-0000-4000-8000-000000000003',
+  'Aventus',
+  'aventus',
+  'EDP',
+  'The modern classic of pineapple, birch, and musk — confident, smoky, and celebrated.',
+  '{"top":["Pineapple","Bergamot","Blackcurrant","Apple"],"heart":["Birch","Patchouli","Moroccan Jasmine","Rose"],"base":["Musk","Oakmoss","Ambergris","Vanilla"]}'::jsonb,
+  array['/products/aventus.png'],
+  true
+),
+(
+  'b1000000-0000-4000-8000-000000000004',
+  'a1000000-0000-4000-8000-000000000004',
+  'Oud Wood',
+  'oud-wood',
+  'EDP',
+  'Rare oud enveloped in rosewood, cardamom, and tonka — smoky, resinous, intimate.',
+  '{"top":["Rosewood","Cardamom","Chinese Pepper"],"heart":["Oud","Sandalwood","Vetiver"],"base":["Tonka Bean","Amber","Vanilla"]}'::jsonb,
+  array['/products/oud-wood.png'],
+  true
+),
+(
+  'b1000000-0000-4000-8000-000000000005',
+  'a1000000-0000-4000-8000-000000000005',
+  'Baccarat Rouge 540',
+  'baccarat-rouge-540',
+  'EDP',
+  'Saffron and ambergris suspended in crystalline wood — luminous, addictive, unmistakable.',
+  '{"top":["Saffron","Jasmine"],"heart":["Amberwood","Ambergris"],"base":["Fir Resin","Cedar"]}'::jsonb,
+  array['/products/baccarat-rouge-540.png'],
+  true
+),
+(
+  'b1000000-0000-4000-8000-000000000006',
+  'a1000000-0000-4000-8000-000000000001',
+  'Coco Mademoiselle',
+  'coco-mademoiselle',
+  'EDP',
+  'Orange and rose over patchouli and white musk — bright, elegant, endlessly chic.',
+  '{"top":["Orange","Mandarin","Bergamot","Orange Blossom"],"heart":["Turkish Rose","Jasmine","Ylang-Ylang","Mimosa"],"base":["Patchouli","White Musk","Vetiver","Vanilla","Tonka"]}'::jsonb,
+  array['/products/coco-mademoiselle.png'],
+  true
+);
+
+-- Variants: full size + decants
+insert into public.product_variants (id, product_id, type, size_ml, price_lkr, sku, is_active) values
+-- Bleu
+('c1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'full_size', 100, 48500, 'CHN-BDC-100', true),
+('c1000000-0000-4000-8000-000000000002', 'b1000000-0000-4000-8000-000000000001', 'decant', 2, 1800, 'CHN-BDC-D2', true),
+('c1000000-0000-4000-8000-000000000003', 'b1000000-0000-4000-8000-000000000001', 'decant', 5, 3900, 'CHN-BDC-D5', true),
+('c1000000-0000-4000-8000-000000000004', 'b1000000-0000-4000-8000-000000000001', 'decant', 10, 7200, 'CHN-BDC-D10', true),
+-- Sauvage
+('c1000000-0000-4000-8000-000000000005', 'b1000000-0000-4000-8000-000000000002', 'full_size', 100, 42000, 'DIO-SAV-100', true),
+('c1000000-0000-4000-8000-000000000006', 'b1000000-0000-4000-8000-000000000002', 'decant', 2, 1600, 'DIO-SAV-D2', true),
+('c1000000-0000-4000-8000-000000000007', 'b1000000-0000-4000-8000-000000000002', 'decant', 5, 3500, 'DIO-SAV-D5', true),
+('c1000000-0000-4000-8000-000000000008', 'b1000000-0000-4000-8000-000000000002', 'decant', 10, 6500, 'DIO-SAV-D10', true),
+-- Aventus
+('c1000000-0000-4000-8000-000000000009', 'b1000000-0000-4000-8000-000000000003', 'full_size', 100, 95000, 'CRD-AVT-100', true),
+('c1000000-0000-4000-8000-000000000010', 'b1000000-0000-4000-8000-000000000003', 'decant', 2, 3500, 'CRD-AVT-D2', true),
+('c1000000-0000-4000-8000-000000000011', 'b1000000-0000-4000-8000-000000000003', 'decant', 5, 7800, 'CRD-AVT-D5', true),
+('c1000000-0000-4000-8000-000000000012', 'b1000000-0000-4000-8000-000000000003', 'decant', 10, 14500, 'CRD-AVT-D10', true),
+-- Oud Wood
+('c1000000-0000-4000-8000-000000000013', 'b1000000-0000-4000-8000-000000000004', 'full_size', 50, 72000, 'TF-OW-50', true),
+('c1000000-0000-4000-8000-000000000014', 'b1000000-0000-4000-8000-000000000004', 'decant', 2, 2800, 'TF-OW-D2', true),
+('c1000000-0000-4000-8000-000000000015', 'b1000000-0000-4000-8000-000000000004', 'decant', 5, 6200, 'TF-OW-D5', true),
+('c1000000-0000-4000-8000-000000000016', 'b1000000-0000-4000-8000-000000000004', 'decant', 10, 11500, 'TF-OW-D10', true),
+-- BR540
+('c1000000-0000-4000-8000-000000000017', 'b1000000-0000-4000-8000-000000000005', 'full_size', 70, 88000, 'MFK-BR540-70', true),
+('c1000000-0000-4000-8000-000000000018', 'b1000000-0000-4000-8000-000000000005', 'decant', 2, 3200, 'MFK-BR540-D2', true),
+('c1000000-0000-4000-8000-000000000019', 'b1000000-0000-4000-8000-000000000005', 'decant', 5, 7200, 'MFK-BR540-D5', true),
+('c1000000-0000-4000-8000-000000000020', 'b1000000-0000-4000-8000-000000000005', 'decant', 10, 13500, 'MFK-BR540-D10', true),
+-- Coco
+('c1000000-0000-4000-8000-000000000021', 'b1000000-0000-4000-8000-000000000006', 'full_size', 100, 46000, 'CHN-CM-100', true),
+('c1000000-0000-4000-8000-000000000022', 'b1000000-0000-4000-8000-000000000006', 'decant', 2, 1700, 'CHN-CM-D2', true),
+('c1000000-0000-4000-8000-000000000023', 'b1000000-0000-4000-8000-000000000006', 'decant', 5, 3700, 'CHN-CM-D5', true),
+('c1000000-0000-4000-8000-000000000024', 'b1000000-0000-4000-8000-000000000006', 'decant', 10, 6900, 'CHN-CM-D10', true);
+
+-- Inventory: sealed bottles + one open lot per product for decants
+insert into public.inventory_lots (product_id, fill_ml, remaining_ml, status, cost_lkr) values
+('b1000000-0000-4000-8000-000000000001', 100, 100, 'sealed', 32000),
+('b1000000-0000-4000-8000-000000000001', 100, 100, 'sealed', 32000),
+('b1000000-0000-4000-8000-000000000001', 100, 72, 'open', 32000),
+('b1000000-0000-4000-8000-000000000002', 100, 100, 'sealed', 28000),
+('b1000000-0000-4000-8000-000000000002', 100, 100, 'sealed', 28000),
+('b1000000-0000-4000-8000-000000000002', 100, 85, 'open', 28000),
+('b1000000-0000-4000-8000-000000000003', 100, 100, 'sealed', 62000),
+('b1000000-0000-4000-8000-000000000003', 100, 55, 'open', 62000),
+('b1000000-0000-4000-8000-000000000004', 50, 50, 'sealed', 48000),
+('b1000000-0000-4000-8000-000000000004', 50, 50, 'sealed', 48000),
+('b1000000-0000-4000-8000-000000000004', 50, 30, 'open', 48000),
+('b1000000-0000-4000-8000-000000000005', 70, 70, 'sealed', 58000),
+('b1000000-0000-4000-8000-000000000005', 70, 40, 'open', 58000),
+('b1000000-0000-4000-8000-000000000006', 100, 100, 'sealed', 30000),
+('b1000000-0000-4000-8000-000000000006', 100, 90, 'open', 30000);

@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spritz Perfumes
 
-## Getting Started
+E-commerce platform for full size and decants — Next.js, Supabase, and PayHere.
 
-First, run the development server:
+## Quick start
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without Supabase credentials the storefront runs in **demo mode** (seeded catalog, cart, and checkout that skips live PayHere).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Project is already provisioned via MCP for this workspace.
+2. Env vars in `.env.local` use the new **publishable** + **secret** keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`).
+3. In Supabase Auth settings, add redirect URL `http://localhost:3000/auth/callback` (and your production URL). Sign up at `/signup`, then promote yourself:
 
-## Learn More
+```sql
+update public.profiles set role = 'admin' where email = 'you@example.com';
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Schema lives in [`supabase/migrations`](supabase/migrations); seed in [`supabase/seed.sql`](supabase/seed.sql).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Local SQL files remain the source of truth if you recreate the project.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## PayHere setup
 
-## Deploy on Vercel
+1. Create a sandbox merchant at [PayHere](https://www.payhere.lk/).
+2. Set `PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET`, `PAYHERE_SANDBOX=true`.
+3. Set `NEXT_PUBLIC_SITE_URL` to a publicly reachable URL for `notify_url` (e.g. ngrok in local dev).
+4. Payment confirmation is driven by `/api/payhere/notify` (not the client callback). On success the order is marked `paid` and inventory is fulfilled via `fulfill_order_inventory`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Inventory model
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Sealed lots** — wholesale bottles available as full-bottle sales.
+- **Open lots** — bottles opened for decanting; `remaining_ml` decreases on decant sales.
+- Admin can **Receive stock** and **Open for decant** under `/admin/inventory`.
+
+## Scripts
+
+| Command        | Description              |
+| -------------- | ------------------------ |
+| `npm run dev`  | Development server       |
+| `npm run build`| Production build         |
+| `npm run start`| Start production server  |
+| `npm run lint` | ESLint                   |

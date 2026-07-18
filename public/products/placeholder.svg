@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="800" y2="1000">
+      <stop stop-color="#0c0b0a"/>
+      <stop offset="0.5" stop-color="#1a1510"/>
+      <stop offset="1" stop-color="#0a0908"/>
+    </linearGradient>
+    <linearGradient id="bottle" x1="300" y1="200" x2="500" y2="800">
+      <stop stop-color="#c9a227" stop-opacity="0.15"/>
+      <stop offset="0.5" stop-color="#e8d5a3" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#8a6d2b" stop-opacity="0.2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="400" cy="450" r="300">
+      <stop stop-color="#d4af37" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#0c0b0a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <ellipse cx="400" cy="480" rx="280" ry="320" fill="url(#glow)"/>
+  <rect x="355" y="180" width="90" height="40" rx="4" fill="#2a241c" stroke="#d4af37" stroke-opacity="0.4"/>
+  <rect x="370" y="220" width="60" height="50" fill="#1f1a14" stroke="#d4af37" stroke-opacity="0.3"/>
+  <path d="M300 280 C300 260 500 260 500 280 L520 780 C520 820 280 820 280 780 Z" fill="url(#bottle)" stroke="#d4af37" stroke-opacity="0.45" stroke-width="1.5"/>
+  <path d="M320 320 C360 300 440 300 480 320" stroke="#f5e6c8" stroke-opacity="0.2" stroke-width="2"/>
+  <text x="400" y="900" text-anchor="middle" fill="#d4af37" fill-opacity="0.7" font-family="Georgia, serif" font-size="22" letter-spacing="4">placeholder</text>
+</svg>
