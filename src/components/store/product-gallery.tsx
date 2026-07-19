@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { ImageEdgeFade } from "@/components/store/image-edge-fade";
 import { cn } from "@/lib/utils";
 
 export function ProductGallery({
@@ -18,7 +19,7 @@ export function ProductGallery({
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      <div className="relative aspect-square overflow-hidden bg-muted mist-glow sm:aspect-4/5">
+      <div className="relative aspect-square overflow-hidden bg-background mist-glow sm:aspect-4/5">
         <Image
           src={current}
           alt={alt}
@@ -27,21 +28,27 @@ export function ProductGallery({
           className="object-cover"
           sizes="(max-width:1024px) 100vw, 50vw"
         />
+        <ImageEdgeFade size="lg" />
+        <div
+          className="pointer-events-none absolute inset-0 z-1 bg-linear-to-t from-background/50 via-transparent to-background/15"
+          aria-hidden
+        />
       </div>
       {list.length > 1 ? (
-        <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-px overflow-x-auto bg-border/40 scrollbar-none">
           {list.map((src, i) => (
             <button
               key={`${src}-${i}`}
               type="button"
               onClick={() => setActive(i)}
               className={cn(
-                "relative h-14 w-12 shrink-0 overflow-hidden border transition sm:h-20 sm:w-16",
+                "relative h-14 w-12 shrink-0 overflow-hidden bg-background transition sm:h-20 sm:w-16",
                 i === active
-                  ? "border-amber"
-                  : "border-border opacity-70 hover:opacity-100",
+                  ? "ring-1 ring-inset ring-amber"
+                  : "opacity-70 hover:opacity-100",
               )}
               aria-label={`View image ${i + 1}`}
+              aria-pressed={i === active}
             >
               <Image
                 src={src}
@@ -50,6 +57,7 @@ export function ProductGallery({
                 className="object-cover"
                 sizes="64px"
               />
+              <ImageEdgeFade size="sm" />
             </button>
           ))}
         </div>

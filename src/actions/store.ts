@@ -73,7 +73,7 @@ export async function submitReview(formData: FormData) {
     return fail("Could not verify purchase");
   }
   if (!purchased) {
-    return fail("Only customers who completed an order for this scent can review it");
+    return fail("Only customers who completed an order for this fragrance can review it");
   }
 
   const { error } = await supabase.from("reviews").upsert(

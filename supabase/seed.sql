@@ -21,7 +21,7 @@ insert into public.brands (id, name, slug, description, country, website) values
     'a1000000-0000-4000-8000-000000000003',
     'Creed',
     'creed',
-    'Heritage house of niche scents',
+    'Heritage house of niche fragrances',
     'United Kingdom',
     'https://www.creedboutique.com'
   ),
@@ -48,7 +48,26 @@ on conflict (id) do update set
   country = excluded.country,
   website = excluded.website;
 
-insert into public.products (id, brand_id, name, slug, concentration, description, notes, images, is_active) values
+insert into public.products (
+  id,
+  brand_id,
+  name,
+  slug,
+  concentration,
+  description,
+  notes,
+  images,
+  is_active,
+  gender,
+  longevity,
+  projection,
+  season,
+  occasion,
+  country_of_origin,
+  year_released,
+  perfumers,
+  collection
+) values
 (
   'b1000000-0000-4000-8000-000000000001',
   'a1000000-0000-4000-8000-000000000001',
@@ -58,7 +77,16 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'A woody aromatic composed around a heart of cedar and sandalwood — cool, magnetic, endlessly wearable.',
   '{"top":["Citrus","Mint","Pink Pepper"],"heart":["Ginger","Nutmeg","Jasmine"],"base":["Incense","Cedar","Sandalwood"]}'::jsonb,
   array['/products/bleu-de-chanel.png'],
-  true
+  true,
+  'men',
+  '8–10 hours',
+  'Moderate to strong',
+  'Year-round',
+  'Day · Evening · Office',
+  'France',
+  2014,
+  array['Jacques Polge'],
+  'core'
 ),
 (
   'b1000000-0000-4000-8000-000000000002',
@@ -69,7 +97,16 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'Raw freshness meets warm amber — bergamot lightning over a desert of woods and spices.',
   '{"top":["Bergamot","Pepper"],"heart":["Lavender","Sichuan Pepper","Star Anise"],"base":["Ambroxan","Cedar","Labdanum"]}'::jsonb,
   array['/products/sauvage.png'],
-  true
+  true,
+  'men',
+  '10–12 hours',
+  'Strong',
+  'Spring · Summer · Fall',
+  'Day · Casual · Night out',
+  'France',
+  2018,
+  array['François Demachy'],
+  'core'
 ),
 (
   'b1000000-0000-4000-8000-000000000003',
@@ -80,7 +117,16 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'The modern classic of pineapple, birch, and musk — confident, smoky, and celebrated.',
   '{"top":["Pineapple","Bergamot","Blackcurrant","Apple"],"heart":["Birch","Patchouli","Moroccan Jasmine","Rose"],"base":["Musk","Oakmoss","Ambergris","Vanilla"]}'::jsonb,
   array['/products/aventus.png'],
-  true
+  true,
+  'men',
+  '10–12 hours',
+  'Strong',
+  'Year-round',
+  'Signature · Evening · Special occasion',
+  'United Kingdom',
+  2010,
+  array['Olivier Creed', 'Erwin Creed'],
+  'core'
 ),
 (
   'b1000000-0000-4000-8000-000000000004',
@@ -91,7 +137,16 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'Rare oud enveloped in rosewood, cardamom, and tonka — smoky, resinous, intimate.',
   '{"top":["Rosewood","Cardamom","Chinese Pepper"],"heart":["Oud","Sandalwood","Vetiver"],"base":["Tonka Bean","Amber","Vanilla"]}'::jsonb,
   array['/products/oud-wood.png'],
-  true
+  true,
+  'unisex',
+  '8–10 hours',
+  'Moderate',
+  'Fall · Winter',
+  'Evening · Intimate · Formal',
+  'United States',
+  2007,
+  array['Tom Ford'],
+  'core'
 ),
 (
   'b1000000-0000-4000-8000-000000000005',
@@ -102,7 +157,16 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'Saffron and ambergris suspended in crystalline wood — luminous, addictive, unmistakable.',
   '{"top":["Saffron","Jasmine"],"heart":["Amberwood","Ambergris"],"base":["Fir Resin","Cedar"]}'::jsonb,
   array['/products/baccarat-rouge-540.png'],
-  true
+  true,
+  'unisex',
+  '12+ hours',
+  'Strong · Beast mode',
+  'Year-round',
+  'Evening · Special occasion · Signature',
+  'France',
+  2015,
+  array['Francis Kurkdjian'],
+  'core'
 ),
 (
   'b1000000-0000-4000-8000-000000000006',
@@ -113,8 +177,35 @@ insert into public.products (id, brand_id, name, slug, concentration, descriptio
   'Orange and rose over patchouli and white musk — bright, elegant, endlessly chic.',
   '{"top":["Orange","Mandarin","Bergamot","Orange Blossom"],"heart":["Turkish Rose","Jasmine","Ylang-Ylang","Mimosa"],"base":["Patchouli","White Musk","Vetiver","Vanilla","Tonka"]}'::jsonb,
   array['/products/coco-mademoiselle.png'],
-  true
-);
+  true,
+  'women',
+  '8–10 hours',
+  'Moderate to strong',
+  'Spring · Summer · Fall',
+  'Day · Office · Date night',
+  'France',
+  2001,
+  array['Jacques Polge'],
+  'core'
+)
+on conflict (id) do update set
+  brand_id = excluded.brand_id,
+  name = excluded.name,
+  slug = excluded.slug,
+  concentration = excluded.concentration,
+  description = excluded.description,
+  notes = excluded.notes,
+  images = excluded.images,
+  is_active = excluded.is_active,
+  gender = excluded.gender,
+  longevity = excluded.longevity,
+  projection = excluded.projection,
+  season = excluded.season,
+  occasion = excluded.occasion,
+  country_of_origin = excluded.country_of_origin,
+  year_released = excluded.year_released,
+  perfumers = excluded.perfumers,
+  collection = excluded.collection;
 
 -- Variants: full size + decants
 insert into public.product_variants (id, product_id, type, size_ml, price_lkr, sku, is_active) values

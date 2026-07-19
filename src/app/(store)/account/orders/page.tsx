@@ -39,9 +39,9 @@ export default async function AccountOrdersPage() {
           No orders yet.
         </AccountEmpty>
       ) : (
-        <ul className="divide-y divide-border/50 border border-border/60 bg-secondary/20">
+        <ul className="border border-border/60 bg-secondary/20">
           {orders.map((order) => (
-            <li key={order.id}>
+            <li key={order.id} className="not-first:border-t not-first:border-border/50">
               <Link
                 href={`/orders/${order.id}`}
                 className="flex min-h-12 flex-col gap-1 px-4 py-3.5 transition hover:bg-secondary/40 sm:min-h-14 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4"

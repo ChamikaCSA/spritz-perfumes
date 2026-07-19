@@ -4,14 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   motion,
-  type MotionValue,
   useReducedMotion,
   useScroll,
   useTransform,
 } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-function buildSparks() {
+const lines = ["Wear it first.", "Own it when", "you're sure."];
+
+const SPARKS = (() => {
   const seeds = [
     [58, 42], [64, 55], [72, 38], [78, 48], [68, 62], [82, 58],
     [55, 50], [74, 70], [61, 34], [86, 44], [70, 28], [52, 66],
@@ -21,151 +22,206 @@ function buildSparks() {
     [59, 28], [76, 40], [85, 62], [62, 68], [70, 50], [53, 44],
     [90, 40], [48, 60], [66, 22], [74, 58], [83, 74], [56, 36],
     [69, 36], [78, 28], [61, 76], [87, 56], [72, 66], [64, 40],
+    [76, 45], [68, 38], [81, 52], [73, 60], [59, 48], [84, 42],
+    [63, 55], [70, 33], [78, 70], [66, 64], [88, 48], [54, 58],
+    [75, 28], [61, 42], [80, 64], [69, 50], [86, 36], [57, 68],
+    [72, 54], [65, 72], [83, 32], [77, 48], [60, 30], [90, 58],
   ];
 
   return seeds.map(([left, top], i) => ({
     left: `${left}%`,
     top: `${top}%`,
-    size: 1.25 + (i % 4) * 0.4,
-    delay: (i * 0.35) % 8,
-    duration: 7.5 + (i % 7) * 0.9,
-    drift: i % 2 === 0 ? 1 : -1,
+    size: 1.1 + (i % 5) * 0.35,
+    delay: `${((i * 0.22) % 7).toFixed(2)}s`,
+    duration: `${(6.5 + (i % 8) * 0.75).toFixed(2)}s`,
+    dx: `${i % 2 === 0 ? 12 : -12}px`,
   }));
-}
+})();
 
-const SPARKS = buildSparks();
-
-function HeroSparks({ scrollY }: { scrollY: MotionValue<number> }) {
+function HeroAtmosphere({ active }: { active: boolean }) {
   const reduceMotion = useReducedMotion();
 
   if (reduceMotion) return null;
 
   return (
-    <motion.div
-      style={{ y: scrollY }}
-      className="pointer-events-none absolute inset-0 z-1 overflow-hidden"
+    <div
+      className="hero-effects pointer-events-none absolute inset-0 z-3 overflow-hidden"
+      data-active={active ? "true" : "false"}
       aria-hidden
     >
+      <div className="hero-light-breath hero-light-a" />
+      <div className="hero-light-breath hero-light-b" />
+
       {SPARKS.map((spark, i) => (
-        <motion.span
+        <span
           key={i}
-          className="absolute rounded-full bg-amber-soft"
-          style={{
-            left: spark.left,
-            top: spark.top,
-            width: spark.size,
-            height: spark.size,
-            boxShadow: `0 0 ${spark.size * 3}px rgba(232, 213, 163, 0.7)`,
-          }}
-          animate={{
-            y: [0, -140, -260],
-            x: [0, spark.drift * 14, spark.drift * -8],
-            opacity: [0, 0.9, 0],
-            scale: [0.4, 1, 0.3],
-          }}
-          transition={{
-            duration: spark.duration,
-            repeat: Infinity,
-            ease: "easeOut",
-            delay: spark.delay,
-          }}
+          className="hero-spark"
+          style={
+            {
+              left: spark.left,
+              top: spark.top,
+              width: spark.size,
+              height: spark.size,
+              boxShadow: `0 0 ${spark.size * 2.5}px rgba(232, 213, 163, 0.55)`,
+              ["--spark-delay" as string]: spark.delay,
+              ["--spark-dur" as string]: spark.duration,
+              ["--spark-dx" as string]: spark.dx,
+            } as CSSProperties
+          }
         />
       ))}
-    </motion.div>
+    </div>
   );
 }
 
 export function HomeHero() {
   const ref = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  const [effectsActive, setEffectsActive] = useState(true);
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
   });
-  const mistY = useTransform(scrollYProgress, [0, 1], [0, 80]);
   const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.08]);
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0.15]);
+  const imageX = useTransform(scrollYProgress, [0, 1], ["0%", "2%"]);
+  const contentY = useTransform(scrollYProgress, [0, 0.55], [0, -36]);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => setEffectsActive(entry.isIntersecting),
+      { rootMargin: "10% 0px", threshold: 0 },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, []);
 
   return (
     <section
       ref={ref}
-      className="relative flex min-h-svh items-end overflow-hidden"
+      aria-labelledby="home-hero-heading"
+      className="relative min-h-svh overflow-hidden bg-ink contain-paint"
     >
       <motion.div
-        style={{ scale: imageScale }}
-        className="absolute inset-0 origin-center"
+        style={
+          reduceMotion
+            ? undefined
+            : { scale: imageScale, x: imageX }
+        }
+        className="absolute inset-0 origin-right will-change-transform"
       >
-        <Image
-          src="/home/hero.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[62%_center]"
-        />
+        <motion.div
+          initial={
+            reduceMotion
+              ? false
+              : { scale: 1.06, x: "1.5%", opacity: 0 }
+          }
+          animate={{ scale: 1, x: "0%", opacity: 1 }}
+          transition={{
+            duration: 2.1,
+            ease: [0.16, 1, 0.3, 1],
+            opacity: { duration: 1.1, ease: "easeOut" },
+          }}
+          className="absolute inset-0 origin-[68%_45%]"
+        >
+          <Image
+            src="/home/hero.png"
+            alt=""
+            fill
+            priority
+            quality={90}
+            // Height-based sizes: portrait cover crops a landscape source hard.
+            sizes="(max-width: 768px) 150vh, 100vw"
+            className="object-cover object-[56%_center] lg:object-[68%_center]"
+          />
+        </motion.div>
       </motion.div>
 
-      <HeroSparks scrollY={mistY} />
+      <div
+        className="absolute inset-0 z-2 bg-[radial-gradient(ellipse_at_70%_45%,transparent_20%,rgba(8,7,6,0.45)_70%,rgba(8,7,6,0.88)_100%)]"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-0 z-2 bg-linear-to-r from-ink via-ink/65 to-transparent sm:via-ink/45"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 z-2 h-1/3 bg-linear-to-t from-background to-transparent"
+        aria-hidden
+      />
 
-      <div
-        className="absolute inset-0 z-2 bg-linear-to-t from-background via-background/75 to-background/25"
+      <HeroAtmosphere active={effectsActive} />
+
+      <p
+        className="pointer-events-none absolute left-4 top-1/2 z-10 hidden origin-left -translate-y-1/2 -rotate-90 text-[10px] uppercase tracking-[0.45em] text-muted-foreground/70 lg:left-6 lg:block xl:left-8"
         aria-hidden
-      />
-      <div
-        className="absolute inset-0 z-2 bg-linear-to-r from-background/80 via-background/35 to-transparent"
-        aria-hidden
-      />
+      >
+        Decant · Bottle · Done
+      </p>
 
       <motion.div
-        style={{ opacity: contentOpacity }}
-        className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-32 sm:px-6 sm:pb-20 lg:px-8 lg:pb-24"
+        style={
+          reduceMotion
+            ? undefined
+            : { y: contentY }
+        }
+        className="relative z-10 flex min-h-svh flex-col justify-end px-4 pb-14 pt-28 sm:px-6 sm:pb-20 lg:justify-center lg:px-8 lg:pb-24 lg:pt-32"
       >
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="mb-4 text-xs uppercase tracking-[0.35em] text-amber"
-        >
-          Sealed &amp; authentic
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-xl font-display text-[clamp(2.75rem,8vw,5.25rem)] leading-[0.95] tracking-tight text-foreground"
-        >
-          Fragrance from
-          <span className="mt-1 block text-amber-soft/90">
-            houses worth collecting.
-          </span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.45 }}
-          className="mt-6 max-w-md text-base text-muted-foreground sm:text-lg"
-        >
-          Live with a scent before you commit — full bottles when you&apos;re
-          sure, fine decants when you want to try first.
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-4"
-        >
-          <Link
-            href="/shop"
-            className="inline-flex h-12 w-full items-center justify-center bg-amber px-8 text-xs font-medium uppercase tracking-[0.2em] text-primary-foreground transition hover:bg-amber-soft sm:w-auto"
+        <div className="mx-auto w-full max-w-7xl lg:pl-10 xl:pl-14">
+          <div
+            className="hero-anim-line mb-6 h-px w-16 bg-amber sm:mb-8 sm:w-24"
+            aria-hidden
+          />
+
+          <h1
+            id="home-hero-heading"
+            className="max-w-[12ch] font-display text-[clamp(3rem,11vw,6.5rem)] leading-[0.9] tracking-tight text-foreground"
           >
-            Explore scents
-          </Link>
-          <Link
-            href="/shop?type=decant"
-            className="inline-flex h-12 w-full items-center justify-center border border-border px-8 text-xs uppercase tracking-[0.2em] text-foreground transition hover:border-amber hover:text-amber sm:w-auto"
+            {lines.map((line, i) => (
+              <span key={line} className="block overflow-hidden">
+                <span
+                  className={`hero-anim-rise ${i > 0 ? "text-amber-soft" : ""}`}
+                  style={{ animationDelay: `${0.28 + i * 0.12}s` }}
+                >
+                  {line}
+                </span>
+              </span>
+            ))}
+          </h1>
+
+          <p
+            className="hero-anim-fade mt-6 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-8 sm:text-base"
+            style={{ animationDelay: "0.85s" }}
           >
-            Try a decant
-          </Link>
-        </motion.div>
+            Iconic maisons, sealed full bottles, and decants sized to try.
+            Every bottle you buy is one you already love.
+          </p>
+
+          <div
+            className="hero-anim-fade mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:items-center sm:gap-8"
+            style={{ animationDelay: "1s" }}
+          >
+            <Link
+              href="/shop?type=decant"
+              className="group relative inline-flex h-12 w-full items-center justify-center overflow-hidden bg-amber px-8 text-xs font-medium uppercase tracking-[0.22em] text-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-soft sm:w-auto"
+            >
+              <span className="absolute inset-0 origin-left scale-x-0 bg-amber-soft transition duration-500 group-hover:scale-x-100" />
+              <span className="relative">Start with a decant</span>
+            </Link>
+            <Link
+              href="/shop"
+              className="group inline-flex h-12 items-center justify-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground transition hover:text-amber focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/50 sm:h-auto sm:justify-start"
+            >
+              Shop the collection
+              <span aria-hidden className="transition group-hover:translate-x-1">
+                →
+              </span>
+            </Link>
+          </div>
+        </div>
       </motion.div>
     </section>
   );

@@ -126,7 +126,7 @@ export default async function AccountPage() {
       {awaitingReview.length > 0 ? (
         <AccountPanel
           title="Leave a review"
-          description="Share how a scent wears after your order."
+          description="Share how a fragrance wears after your order."
           action={
             <Link
               href="/account/reviews"

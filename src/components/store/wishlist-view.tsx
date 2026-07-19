@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { ProductCard } from "@/components/store/product-card";
+import { WishlistSkeleton } from "@/components/store/skeletons";
 import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
 import type { Product } from "@/lib/types";
@@ -45,9 +46,7 @@ export function WishlistView({ products }: { products: Product[] }) {
   }
 
   if (!hasHydrated) {
-    return (
-      <p className="py-16 text-center text-muted-foreground">Loading wishlist…</p>
-    );
+    return <WishlistSkeleton includeHeader={false} />;
   }
 
   if (saved.length === 0) {
@@ -66,7 +65,7 @@ export function WishlistView({ products }: { products: Product[] }) {
 
   return (
     <div className="space-y-10">
-      <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-3 lg:grid-cols-4">
         {saved.map((product, i) => (
           <div key={product.id} className="flex flex-col bg-background">
             <ProductCard product={product} index={i} />

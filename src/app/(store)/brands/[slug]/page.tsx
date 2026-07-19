@@ -51,7 +51,7 @@ export default async function BrandDetailPage({ params }: { params: Params }) {
           </div>
         )}
 
-        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-20 sm:px-6 sm:pb-12 sm:pt-28 lg:px-8 lg:pt-32">
+        <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-20 sm:px-6 sm:pb-12 sm:pt-28 lg:px-8 lg:pt-32">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
             {brand.logo_url ? (
               <div className="relative size-24 shrink-0 overflow-hidden bg-[#f3ebe0] shadow-[0_0_0_1px_rgba(212,175,55,0.15)] sm:size-28">
@@ -97,13 +97,13 @@ export default async function BrandDetailPage({ params }: { params: Params }) {
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 pt-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
         {products.length === 0 ? (
           <p className="py-16 text-center text-muted-foreground">
             No fragrances from this house yet.
           </p>
         ) : (
-          <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-3 lg:grid-cols-4">
             {products.map((product, i) => (
               <ProductCard key={product.id} product={product} index={i} />
             ))}

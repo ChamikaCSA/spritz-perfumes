@@ -23,7 +23,7 @@ export function CartDrawer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-ink/70 backdrop-blur-sm"
+            className="fixed inset-0 z-60 bg-black/10 backdrop-blur-xs"
             onClick={closeCart}
           />
           <motion.aside
@@ -31,7 +31,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-border bg-card shadow-2xl pt-[env(safe-area-inset-top)]"
+            className="fixed inset-y-0 right-0 z-70 flex w-full max-w-md flex-col border-l border-border bg-background shadow-lg pt-[env(safe-area-inset-top)]"
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h2 className="font-display text-2xl tracking-wide">Your bag</h2>
@@ -48,21 +48,27 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {items.length === 0 ? (
                 <p className="py-16 text-center text-sm text-muted-foreground">
-                  Your bag is empty. Discover a scent worth carrying.
+                  Your bag is empty. Discover a fragrance worth carrying.
                 </p>
               ) : (
                 <ul className="space-y-5">
                   {items.map((item) => (
                     <li key={item.variantId} className="flex gap-4">
-                      <div className="relative size-20 shrink-0 overflow-hidden bg-muted">
+                      <div className="relative size-20 shrink-0 overflow-hidden bg-background">
                         {item.image && (
-                          <Image
-                            src={item.image}
-                            alt={item.productName}
-                            fill
-                            sizes="80px"
-                            className="object-cover"
-                          />
+                          <>
+                            <Image
+                              src={item.image}
+                              alt={item.productName}
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                            />
+                            <div
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0 image-edge-fade-sm"
+                            />
+                          </>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">

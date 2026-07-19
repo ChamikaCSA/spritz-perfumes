@@ -174,7 +174,7 @@ export default async function AdminProductsPage() {
                   />
                 </AdminFormSection>
 
-                <AdminMoreFields label="Scent notes & details (optional)">
+                <AdminMoreFields label="Fragrance notes & details (optional)">
                   <AdminFieldGrid>
                     <AdminField label="Top notes" hint="Comma-separated">
                       <input name="notes_top" className={adminFieldClass} />

@@ -13,19 +13,27 @@ function MarqueeTrack({
 }) {
   return (
     <ul
-      className="flex shrink-0 items-center gap-6 px-3 sm:gap-10 sm:px-5"
+      className="flex shrink-0 items-baseline gap-6 px-3 sm:gap-10 sm:px-5"
       aria-hidden={pass > 0 || undefined}
     >
       {brands.map((brand, i) => (
         <li
           key={`${pass}-${brand.id}-${i}`}
-          className="flex shrink-0 items-center gap-6 sm:gap-10"
+          className="flex shrink-0 items-baseline gap-6 sm:gap-10"
         >
-          <span className="font-display text-lg tracking-tight text-muted-foreground/70 sm:text-xl lg:text-2xl">
+          <span
+            className={`font-display text-lg tracking-tight sm:text-xl lg:text-2xl ${
+              i % 3 === 0
+                ? "text-amber-soft/90"
+                : i % 3 === 1
+                  ? "text-foreground/75"
+                  : "text-muted-foreground/60"
+            }`}
+          >
             {brand.name}
           </span>
-          <span className="text-amber/40" aria-hidden>
-            ·
+          <span className="text-amber/35" aria-hidden>
+            /
           </span>
         </li>
       ))}
@@ -44,8 +52,8 @@ export function HousesMarquee({ brands }: HousesMarqueeProps) {
 
   return (
     <section
-      aria-label="Houses we carry"
-      className="border-y border-border/40 bg-secondary/20 py-3.5 sm:py-4"
+      aria-label="Houses in our collection"
+      className="relative overflow-hidden border-y border-border/40 py-3.5 sm:py-4"
     >
       <div className="relative overflow-hidden">
         <div

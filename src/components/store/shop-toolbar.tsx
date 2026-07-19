@@ -154,7 +154,8 @@ export function ShopToolbar({
       label: `LKR ${params.min_price || "0"}–${params.max_price || "∞"}`,
     });
   }
-  if (params.note) activePills.push({ key: "note", label: `Note: ${params.note}` });
+  if (params.note)
+    activePills.push({ key: "note", label: `Note: ${params.note}` });
 
   const sortBy = (params.sort as ProductSort | undefined) ?? "name";
   const sortOrder =
@@ -174,11 +175,24 @@ export function ShopToolbar({
           navigate({ q: String(fd.get("q") || "") || undefined });
         }}
       >
-        {(["type", "sort", "order", "concentration", "gender", "size_ml", "available", "brand", "min_price", "max_price", "note"] as const).map(
-          (key) =>
-            params[key] ? (
-              <input key={key} type="hidden" name={key} value={params[key]} />
-            ) : null,
+        {(
+          [
+            "type",
+            "sort",
+            "order",
+            "concentration",
+            "gender",
+            "size_ml",
+            "available",
+            "brand",
+            "min_price",
+            "max_price",
+            "note",
+          ] as const
+        ).map((key) =>
+          params[key] ? (
+            <input key={key} type="hidden" name={key} value={params[key]} />
+          ) : null,
         )}
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -318,13 +332,11 @@ export function ShopToolbar({
               className="w-full border-border bg-background sm:max-w-md"
             >
               <SheetHeader>
-                <SheetTitle className="font-display text-2xl">Filters</SheetTitle>
+                <SheetTitle className="font-display text-2xl">
+                  Filters
+                </SheetTitle>
                 <SheetDescription>
-                  Narrow by collection, notes, size, and more. Brands live on{" "}
-                  <Link href="/brands" className="text-amber hover:underline">
-                    Brands
-                  </Link>
-                  .
+                  Narrow by collection, notes, size, and more.
                 </SheetDescription>
               </SheetHeader>
 

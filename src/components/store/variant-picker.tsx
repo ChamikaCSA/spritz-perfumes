@@ -19,17 +19,27 @@ function isPurchasable(v: ProductVariant, stock: StockSummary) {
 export function VariantPicker({
   product,
   stock,
+  initialType,
 }: {
   product: Product;
   stock: StockSummary;
+  initialType?: "full_size" | "decant";
 }) {
   const router = useRouter();
   const variants = product.variants ?? [];
   const bottles = variants.filter((v) => v.type === "full_size");
   const decants = variants.filter((v) => v.type === "decant");
-  const [mode, setMode] = useState<"full_size" | "decant">(
-    bottles.length ? "full_size" : "decant",
-  );
+
+  const preferred =
+    initialType === "decant" && decants.length > 0
+      ? "decant"
+      : initialType === "full_size" && bottles.length > 0
+        ? "full_size"
+        : bottles.length
+          ? "full_size"
+          : "decant";
+
+  const [mode, setMode] = useState<"full_size" | "decant">(preferred);
   const options = mode === "full_size" ? bottles : decants;
   const firstBuyable = options.find((v) => isPurchasable(v, stock));
   const [selectedId, setSelectedId] = useState(
@@ -126,7 +136,7 @@ export function VariantPicker({
               disabled={!available}
               onClick={() => setSelectedId(v.id)}
               className={cn(
-                "min-h-11 min-w-[4.25rem] border px-3.5 py-2 text-sm transition",
+                "min-h-11 min-w-17 border px-3.5 py-2 text-sm transition",
                 selected?.id === v.id
                   ? "border-amber text-amber"
                   : "border-border text-muted-foreground hover:border-amber/50",

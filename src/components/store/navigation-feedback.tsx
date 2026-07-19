@@ -6,11 +6,14 @@ import { Suspense, useEffect, useState } from "react";
 function NavigationFeedbackInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const locationKey = `${pathname}?${searchParams.toString()}`;
   const [pending, setPending] = useState(false);
+  const [seenLocation, setSeenLocation] = useState(locationKey);
 
-  useEffect(() => {
+  if (seenLocation !== locationKey) {
+    setSeenLocation(locationKey);
     setPending(false);
-  }, [pathname, searchParams]);
+  }
 
   useEffect(() => {
     document.documentElement.classList.toggle("nav-pending", pending);

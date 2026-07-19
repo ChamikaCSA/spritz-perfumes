@@ -277,7 +277,7 @@ export default async function AdminOrdersPage() {
                       <td className="px-3 py-2 font-medium tabular-nums">
                         {order.order_number}
                       </td>
-                      <td className="max-w-[12rem] truncate px-3 py-2 text-muted-foreground">
+                      <td className="max-w-48 truncate px-3 py-2 text-muted-foreground">
                         {order.first_name} {order.last_name}
                       </td>
                       <td className="px-3 py-2">

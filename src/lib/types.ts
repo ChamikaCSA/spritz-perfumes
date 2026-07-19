@@ -35,7 +35,7 @@ export function defaultSortOrder(sort: ProductSort = "name"): ProductSortOrder {
   return sort === "name" || sort === "price" ? "asc" : "desc";
 }
 
-export type ScentNotes = {
+export type FragranceNotes = {
   top: string[];
   heart: string[];
   base: string[];
@@ -72,7 +72,7 @@ export type Product = {
   slug: string;
   concentration: Concentration;
   description: string | null;
-  notes: ScentNotes;
+  notes: FragranceNotes;
   images: string[];
   is_active: boolean;
   gender?: ProductGender | null;
@@ -189,6 +189,8 @@ export type Review = {
   packaging_score: number | null;
   is_approved: boolean;
   created_at: string;
+  /** Display name for storefront; never expose email publicly. */
+  reviewer_name?: string | null;
 };
 
 export type ReturnRequest = {

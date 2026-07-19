@@ -75,7 +75,7 @@ export default async function ShopPage({
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
+    <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
       <div className="mb-6 sm:mb-8">
         <p className="text-xs uppercase tracking-[0.3em] text-amber">Catalog</p>
         <h1 className="mt-2 font-display text-4xl sm:text-5xl lg:text-6xl">Shop</h1>
@@ -105,9 +105,17 @@ export default async function ShopPage({
           No fragrances match these filters.
         </p>
       ) : (
-        <div className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 lg:grid-cols-3">
+        <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              preferType={
+                params.type === "full_size" || params.type === "decant"
+                  ? params.type
+                  : undefined
+              }
+            />
           ))}
         </div>
       )}

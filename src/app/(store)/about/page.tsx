@@ -15,7 +15,7 @@ export default function AboutPage() {
         </p>
         <p>
           Our counter is built for curiosity: explore by maison, concentration,
-          season, or note, then live with a scent before you invest. Decants are
+          season, or note, then live with a fragrance before you invest. Decants are
           filled from open inventory we track down to the millilitre.
         </p>
         <p>

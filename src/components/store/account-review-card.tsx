@@ -32,7 +32,7 @@ export function AccountReviewCard({
           </p>
           <Link
             href={`/product/${product.slug}`}
-            className="mt-0.5 block break-words font-display text-xl hover:text-amber sm:mt-1 sm:text-2xl"
+            className="mt-0.5 block wrap-break-word font-display text-xl hover:text-amber sm:mt-1 sm:text-2xl"
           >
             {product.name}
           </Link>

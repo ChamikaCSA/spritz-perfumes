@@ -40,6 +40,18 @@ function normalizeProduct(row: ProductRow): Product {
   };
 }
 
+/** Build a to_tsquery string with prefix matching (e.g. "dio" → "dio:*"). */
+function toPrefixSearchQuery(raw: string): string | null {
+  const terms = raw
+    .trim()
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ""))
+    .filter((t) => t.length > 0);
+  if (!terms.length) return null;
+  return terms.map((t) => `${t}:*`).join(" & ");
+}
+
 function lowestPrice(product: Product) {
   const prices = (product.variants ?? []).map((v) => Number(v.price_lkr));
   return prices.length ? Math.min(...prices) : 0;
@@ -162,10 +174,13 @@ export async function getProducts(
     query = query.eq("product_variants.size_ml", Number(filters.size_ml));
   }
   if (filters?.q) {
-    query = query.textSearch("search_vector", filters.q, {
-      type: "websearch",
-      config: "english",
-    });
+    const tsQuery = toPrefixSearchQuery(filters.q);
+    if (tsQuery) {
+      // Omit type so PostgREST uses to_tsquery (supports term:* prefixes).
+      query = query.textSearch("search_vector", tsQuery, {
+        config: "english",
+      });
+    }
   }
 
   const sortBy = filters?.sort ?? "name";
@@ -523,7 +538,36 @@ export async function getApprovedReviews(
   if (productId) query = query.eq("product_id", productId);
   const { data, error } = await query;
   if (error || !data) return [];
-  return data as Review[];
+
+  const reviews = data as Review[];
+  const userIds = [...new Set(reviews.map((r) => r.user_id))];
+  const nameByUser = new Map<string, string>();
+
+  if (userIds.length) {
+    try {
+      const { createServiceClient } = await import("@/lib/supabase/admin");
+      const service = createServiceClient();
+      const { data: profiles } = await service
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      for (const profile of profiles ?? []) {
+        const name = String(
+          (profile as { full_name: string | null }).full_name ?? "",
+        ).trim();
+        if (name) {
+          nameByUser.set((profile as { id: string }).id, name);
+        }
+      }
+    } catch (err) {
+      console.error("getApprovedReviews profile lookup failed", err);
+    }
+  }
+
+  return reviews.map((review) => ({
+    ...review,
+    reviewer_name: nameByUser.get(review.user_id) ?? "Verified customer",
+  }));
 }
 
 export async function getStockSummary(productId: string): Promise<StockSummary> {

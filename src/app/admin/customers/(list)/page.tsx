@@ -112,7 +112,7 @@ export default async function AdminCustomersPage() {
                         <td className="px-3 py-2 font-medium">
                           {p.full_name || "—"}
                         </td>
-                        <td className="max-w-[14rem] truncate px-3 py-2 text-muted-foreground">
+                        <td className="max-w-56 truncate px-3 py-2 text-muted-foreground">
                           {p.email}
                         </td>
                         <td className="px-3 py-2">

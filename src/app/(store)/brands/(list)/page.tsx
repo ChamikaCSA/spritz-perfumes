@@ -8,7 +8,7 @@ export default async function BrandsPage() {
   const brands = await getBrands();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
+    <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
       <div className="mb-6 sm:mb-10 lg:mb-12">
         <p className="text-xs uppercase tracking-[0.3em] text-amber">Houses</p>
         <h1 className="mt-2 font-display text-4xl sm:text-5xl lg:text-6xl">Brands</h1>
@@ -18,14 +18,14 @@ export default async function BrandsPage() {
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 [&>*]:border-r [&>*]:border-b [&>*]:border-border/40 lg:grid-cols-3">
+      <ul className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
         {brands.map((brand) => (
           <li key={brand.id}>
             <Link
               href={`/brands/${brand.slug}`}
               className="group block transition"
             >
-              <div className="relative aspect-[16/10] overflow-hidden bg-secondary/40 sm:aspect-[21/9]">
+              <div className="relative aspect-16/10 overflow-hidden bg-secondary/40 sm:aspect-21/9">
                 {brand.banner_url ? (
                   <Image
                     src={brand.banner_url}

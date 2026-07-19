@@ -49,6 +49,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
+  --container-7xl: 96rem;
 }
 
 :root {
@@ -119,6 +120,16 @@
     backdrop-filter: blur(16px);
     border: 1px solid rgba(212, 175, 55, 0.12);
   }
+  /* Softens product photo edges into the page background */
+  .image-edge-fade {
+    box-shadow: inset 0 0 40px 22px var(--background);
+  }
+  .image-edge-fade-lg {
+    box-shadow: inset 0 0 72px 40px var(--background);
+  }
+  .image-edge-fade-sm {
+    box-shadow: inset 0 0 24px 14px var(--background);
+  }
 }
 
 @keyframes houses-marquee {
@@ -134,15 +145,178 @@
   animation: houses-marquee 40s linear infinite;
 }
 
+/* Hero atmosphere — sparks + soft light breath on the warm key */
+@keyframes hero-spark {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.4);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.85;
+    transform: translate3d(var(--spark-dx), -90px, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(calc(var(--spark-dx) * -0.4), -240px, 0) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes hero-light-a {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  20% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.38;
+    transform: translate3d(-2%, 1%, 0) scale(1.04);
+  }
+  80% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes hero-light-b {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+  22% {
+    opacity: 0.12;
+  }
+  48% {
+    opacity: 0.26;
+    transform: translate3d(1.5%, -1.5%, 0) scale(1.06);
+  }
+  78% {
+    opacity: 0.12;
+  }
+}
+
+@keyframes hero-line-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes hero-rise {
+  from {
+    transform: translate3d(0, 110%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-spark,
+  .hero-light-breath,
+  .hero-anim-line,
+  .hero-anim-rise,
+  .hero-anim-fade {
+    animation: none !important;
+  }
+
+  .hero-anim-rise,
+  .hero-anim-fade,
+  .hero-anim-line {
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-light-breath {
+    opacity: 0.2;
+  }
+}
+
+.hero-effects[data-active="false"] .hero-spark,
+.hero-effects[data-active="false"] .hero-light-breath {
+  animation-play-state: paused;
+}
+
+.hero-spark {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--amber-soft);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: hero-spark var(--spark-dur) ease-out infinite both;
+  animation-delay: var(--spark-delay);
+}
+
+.hero-light-breath {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  will-change: transform, opacity;
+}
+
+.hero-light-a {
+  right: -8%;
+  top: 12%;
+  height: 70%;
+  width: 55%;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 40% 45%,
+    rgba(232, 213, 163, 0.55) 0%,
+    rgba(212, 175, 55, 0.18) 42%,
+    transparent 72%
+  );
+  filter: blur(40px);
+  animation: hero-light-a 14s ease-in-out infinite both;
+}
+
+.hero-light-b {
+  right: 8%;
+  top: 28%;
+  height: 42%;
+  width: 36%;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 248, 230, 0.4) 0%,
+    rgba(232, 213, 163, 0.12) 50%,
+    transparent 75%
+  );
+  filter: blur(28px);
+  animation: hero-light-b 18s ease-in-out infinite both;
+  animation-delay: 2.5s;
+}
+
+.hero-anim-line {
+  transform-origin: left center;
+  animation: hero-line-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.hero-anim-rise {
+  display: block;
+  animation: hero-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-anim-fade {
+  animation: hero-fade-up 0.7s ease both;
+}
+
 html.nav-pending {
   cursor: progress;
-}
-
-html.nav-pending body main {
-  opacity: 0.72;
-  transition: opacity 160ms ease;
-}
-
-html:not(.nav-pending) body main {
-  transition: opacity 220ms ease;
 }

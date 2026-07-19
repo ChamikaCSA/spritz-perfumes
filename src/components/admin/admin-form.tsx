@@ -175,7 +175,7 @@ export function AdminFileField({
         accept={accept}
         multiple={multiple}
         required={required}
-        className="block w-full text-sm file:mr-3 file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs file:uppercase file:tracking-[0.16em] file:text-foreground"
+        className="block w-full text-sm file:mr-3 file:border-0 file:bg-secondary file:px-3 file:py-2 file:uppercase file:tracking-[0.16em] file:text-foreground"
       />
     </AdminField>
   );

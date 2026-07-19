@@ -10,7 +10,7 @@ export default function ContactPage() {
         <p className="text-xs uppercase tracking-[0.3em] text-amber">Reach us</p>
         <h1 className="mt-2 font-display text-4xl sm:text-5xl lg:text-6xl">Contact</h1>
         <p className="mt-4 text-muted-foreground">
-          Stock questions, order help, or a scent recommendation — message us
+          Stock questions, order help, or a fragrance recommendation — message us
           and we&apos;ll get back to you.
         </p>
       </header>
