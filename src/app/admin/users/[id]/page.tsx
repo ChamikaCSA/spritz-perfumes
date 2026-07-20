@@ -3,6 +3,7 @@ import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
+  adminTextLinkClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus, orderStatusTone } from "@/components/admin/admin-status";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,7 @@ import { notFound } from "next/navigation";
 
 type Params = Promise<{ id: string }>;
 
-export default async function AdminCustomerDetailPage({
+export default async function AdminUserDetailPage({
   params,
 }: {
   params: Params;
@@ -33,18 +34,10 @@ export default async function AdminCustomerDetailPage({
 
   return (
     <div className="space-y-5 sm:space-y-8">
-      <div>
-        <Link
-          href="/admin/customers"
-          className="text-xs uppercase tracking-[0.16em] text-muted-foreground hover:text-amber"
-        >
-          ← Customers
-        </Link>
-        <AdminPageHeader
-          title={profile.full_name || profile.email || "Customer"}
-          description={`${profile.email} · ${profile.phone || "No phone"} · ${profile.role}`}
-        />
-      </div>
+      <AdminPageHeader
+        title={profile.full_name || profile.email || "User"}
+        description={`${profile.email} · ${profile.phone || "No phone"} · ${profile.role}`}
+      />
 
       <AdminPanel title="Orders">
         {(orders ?? []).length ? (
@@ -56,8 +49,8 @@ export default async function AdminCustomerDetailPage({
               >
                 <div className="min-w-0 flex-1">
                   <Link
-                    href="/admin/orders"
-                    className="truncate text-sm font-medium hover:text-amber"
+                    href={`/admin/orders/${o.id}`}
+                    className={adminTextLinkClass}
                   >
                     {o.order_number}
                   </Link>

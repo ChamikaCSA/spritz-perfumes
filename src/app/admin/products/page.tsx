@@ -1,13 +1,6 @@
-import Image from "next/image";
-import {
-  appendProductImages,
-  deleteProduct,
-  duplicateProduct,
-  importProductsCsv,
-  upsertProduct,
-  upsertVariant,
-} from "@/actions/admin";
+import { deleteProduct, deleteVariant, upsertProduct, upsertVariant } from "@/actions/admin";
 import { AdminFormDialog } from "@/components/admin/admin-form-dialog";
+import { AdminDeleteForm } from "@/components/admin/admin-delete-form";
 import {
   AdminCheckbox,
   AdminField,
@@ -15,7 +8,6 @@ import {
   AdminFileField,
   AdminForm,
   AdminFormSection,
-  AdminMoreFields,
   adminFieldClass,
   adminTextareaClass,
 } from "@/components/admin/admin-form";
@@ -24,13 +16,11 @@ import {
   AdminPageHeader,
   AdminPanel,
   adminButtonClass,
-  adminGhostButtonClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus } from "@/components/admin/admin-status";
 import { DEMO_PRODUCTS } from "@/lib/demo-data";
 import { createClient } from "@/lib/supabase/server";
 import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
-import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Products · Admin" };
 
@@ -123,17 +113,6 @@ export default async function AdminProductsPage() {
                         className={adminFieldClass}
                       />
                     </AdminField>
-                    <AdminField
-                      label="Slug"
-                      hint="URL path — lowercase, hyphens only"
-                    >
-                      <input
-                        name="slug"
-                        required
-                        placeholder="bleu-de-chanel"
-                        className={adminFieldClass}
-                      />
-                    </AdminField>
                     <AdminField label="Collection">
                       <select
                         name="collection"
@@ -174,7 +153,7 @@ export default async function AdminProductsPage() {
                   />
                 </AdminFormSection>
 
-                <AdminMoreFields label="Fragrance notes & details (optional)">
+                <AdminFormSection title="Fragrance notes & details">
                   <AdminFieldGrid>
                     <AdminField label="Top notes" hint="Comma-separated">
                       <input name="notes_top" className={adminFieldClass} />
@@ -214,7 +193,7 @@ export default async function AdminProductsPage() {
                       />
                     </AdminField>
                   </AdminFieldGrid>
-                </AdminMoreFields>
+                </AdminFormSection>
 
                 <AdminFormSection title="Images">
                   <AdminFileField
@@ -224,45 +203,11 @@ export default async function AdminProductsPage() {
                     multiple
                     hint="JPEG, PNG, WebP, GIF, or SVG · max 5MB each"
                   />
-                  <AdminField
-                    label="Or paste image URLs"
-                    hint="Comma-separated — useful for placeholders"
-                  >
-                    <input name="images" className={adminFieldClass} />
-                  </AdminField>
                 </AdminFormSection>
 
                 <button type="submit" className={adminButtonClass}>
                   Save product
                 </button>
-              </AdminForm>
-            </AdminFormDialog>
-
-            <AdminFormDialog
-              triggerLabel="Import CSV"
-              title="Import CSV"
-              description="Bulk create products from a spreadsheet."
-              size="md"
-            >
-              <AdminForm action={importProductsCsv} bare>
-                <AdminFileField
-                  label="CSV file"
-                  name="csv"
-                  accept=".csv,text/csv"
-                  required
-                  hint="Headers: brand_slug, name, slug, concentration, description, collection, notes_top, notes_heart, notes_base, is_active"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <button type="submit" className={adminButtonClass}>
-                    Import CSV
-                  </button>
-                  <a
-                    href="/api/admin/products-export"
-                    className={adminGhostButtonClass}
-                  >
-                    Export CSV
-                  </a>
-                </div>
               </AdminForm>
             </AdminFormDialog>
 
@@ -318,9 +263,6 @@ export default async function AdminProductsPage() {
                       className={adminFieldClass}
                     />
                   </AdminField>
-                  <AdminField label="SKU">
-                    <input name="sku" required className={adminFieldClass} />
-                  </AdminField>
                   <AdminField
                     label="Compare-at (LKR)"
                     hint="Optional sale strikethrough"
@@ -356,9 +298,17 @@ export default async function AdminProductsPage() {
                 type: string;
                 size_ml: number;
                 price_lkr: number;
+                compare_at_price_lkr: number | null;
                 sku: string;
+                is_active: boolean;
               }[];
               const images = (product.images as string[] | null) ?? [];
+              const notes = (product.notes as {
+                top?: string[];
+                heart?: string[];
+                base?: string[];
+              } | null) ?? { top: [], heart: [], base: [] };
+              const perfumers = (product.perfumers as string[] | null) ?? [];
               return (
                 <li
                   key={product.id}
@@ -387,36 +337,8 @@ export default async function AdminProductsPage() {
                     description={`${brand?.name ?? "Brand"} · ${product.slug}`}
                     size="xl"
                     triggerVariant="link"
-                    className="min-h-9 shrink-0 px-1.5 text-[11px]"
                   >
                     <div className="space-y-6">
-                      <div className="flex flex-wrap gap-2">
-                        <form action={duplicateProduct}>
-                          <input type="hidden" name="id" value={product.id} />
-                          <button
-                            type="submit"
-                            className={cn(
-                              adminGhostButtonClass,
-                              "h-9 px-3 text-[10px]",
-                            )}
-                          >
-                            Duplicate
-                          </button>
-                        </form>
-                        <form action={deleteProduct}>
-                          <input type="hidden" name="id" value={product.id} />
-                          <button
-                            type="submit"
-                            className={cn(
-                              adminGhostButtonClass,
-                              "h-9 px-3 text-[10px]",
-                            )}
-                          >
-                            Hide
-                          </button>
-                        </form>
-                      </div>
-
                       <AdminForm action={upsertProduct} bare>
                         <input type="hidden" name="id" value={product.id} />
                         <input
@@ -430,14 +352,6 @@ export default async function AdminProductsPage() {
                               <input
                                 name="name"
                                 defaultValue={product.name}
-                                required
-                                className={adminFieldClass}
-                              />
-                            </AdminField>
-                            <AdminField label="Slug">
-                              <input
-                                name="slug"
-                                defaultValue={product.slug}
                                 required
                                 className={adminFieldClass}
                               />
@@ -468,6 +382,18 @@ export default async function AdminProductsPage() {
                                 <option value="limited">Limited</option>
                               </select>
                             </AdminField>
+                            <AdminField label="Gender">
+                              <select
+                                name="gender"
+                                className={adminFieldClass}
+                                defaultValue={product.gender ?? ""}
+                              >
+                                <option value="">Not set</option>
+                                <option value="women">Women</option>
+                                <option value="men">Men</option>
+                                <option value="unisex">Unisex</option>
+                              </select>
+                            </AdminField>
                           </AdminFieldGrid>
                           <AdminField label="Description">
                             <textarea
@@ -476,7 +402,42 @@ export default async function AdminProductsPage() {
                               className={adminTextareaClass}
                             />
                           </AdminField>
+                          <AdminCheckbox
+                            name="is_active"
+                            label="Active on storefront"
+                            defaultChecked={product.is_active}
+                          />
+                        </AdminFormSection>
+                        <AdminFormSection title="Fragrance notes & details">
                           <AdminFieldGrid>
+                            <AdminField label="Top notes" hint="Comma-separated">
+                              <input
+                                name="notes_top"
+                                defaultValue={notes.top?.join(", ") ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Heart notes" hint="Comma-separated">
+                              <input
+                                name="notes_heart"
+                                defaultValue={notes.heart?.join(", ") ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Base notes" hint="Comma-separated">
+                              <input
+                                name="notes_base"
+                                defaultValue={notes.base?.join(", ") ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Perfumers" hint="Comma-separated">
+                              <input
+                                name="perfumers"
+                                defaultValue={perfumers.join(", ")}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
                             <AdminField label="Longevity">
                               <input
                                 name="longevity"
@@ -491,11 +452,46 @@ export default async function AdminProductsPage() {
                                 className={adminFieldClass}
                               />
                             </AdminField>
+                            <AdminField label="Season">
+                              <input
+                                name="season"
+                                defaultValue={product.season ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Occasion">
+                              <input
+                                name="occasion"
+                                defaultValue={product.occasion ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Country of origin">
+                              <input
+                                name="country_of_origin"
+                                defaultValue={product.country_of_origin ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
+                            <AdminField label="Year released">
+                              <input
+                                name="year_released"
+                                type="number"
+                                defaultValue={product.year_released ?? ""}
+                                className={adminFieldClass}
+                              />
+                            </AdminField>
                           </AdminFieldGrid>
-                          <AdminCheckbox
-                            name="is_active"
-                            label="Active on storefront"
-                            defaultChecked={product.is_active}
+                        </AdminFormSection>
+                        <AdminFormSection title="Images">
+                          <AdminFileField
+                            label="Product images"
+                            name="image_files"
+                            accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                            multiple
+                            existing={images}
+                            existingFieldName="existing_images"
+                            hint="Remove, replace, or add images · JPEG, PNG, WebP, GIF, or SVG · max 5MB each"
                           />
                         </AdminFormSection>
                         <button type="submit" className={adminButtonClass}>
@@ -504,79 +500,197 @@ export default async function AdminProductsPage() {
                       </AdminForm>
 
                       <div className="space-y-3 border-t border-border/40 pt-5">
-                        <p className="text-xs uppercase tracking-[0.18em] text-amber">
-                          Variants
-                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs uppercase tracking-[0.18em] text-amber">
+                            Variants
+                          </p>
+                          <AdminFormDialog
+                            triggerLabel="Add variant"
+                            title={`Add variant · ${product.name}`}
+                            description={`${brand?.name ?? "Brand"} · ${product.slug}`}
+                            size="lg"
+                            triggerVariant="primary"
+                          >
+                            <AdminForm action={upsertVariant} bare>
+                              <input
+                                type="hidden"
+                                name="product_id"
+                                value={product.id}
+                              />
+                              <AdminFieldGrid cols={3}>
+                                <AdminField label="Type">
+                                  <select
+                                    name="type"
+                                    className={adminFieldClass}
+                                    defaultValue="decant"
+                                  >
+                                    <option value="full_size">Full size</option>
+                                    <option value="decant">Decant</option>
+                                  </select>
+                                </AdminField>
+                                <AdminField label="Size (ml)">
+                                  <input
+                                    name="size_ml"
+                                    type="number"
+                                    required
+                                    className={adminFieldClass}
+                                  />
+                                </AdminField>
+                                <AdminField label="Price (LKR)">
+                                  <input
+                                    name="price_lkr"
+                                    type="number"
+                                    required
+                                    className={adminFieldClass}
+                                  />
+                                </AdminField>
+                                <AdminField
+                                  label="Compare-at (LKR)"
+                                  hint="Optional sale strikethrough"
+                                >
+                                  <input
+                                    name="compare_at_price_lkr"
+                                    type="number"
+                                    className={adminFieldClass}
+                                  />
+                                </AdminField>
+                              </AdminFieldGrid>
+                              <AdminCheckbox
+                                name="is_active"
+                                label="Active on storefront"
+                                defaultChecked
+                              />
+                              <button type="submit" className={adminButtonClass}>
+                                Save variant
+                              </button>
+                            </AdminForm>
+                          </AdminFormDialog>
+                        </div>
                         {variants.length ? (
-                          <ul className="space-y-2 text-sm text-muted-foreground">
+                          <ul className="divide-y divide-border/50">
                             {variants.map((v) => (
                               <li
                                 key={v.id}
-                                className="flex flex-wrap justify-between gap-2 border border-border/30 px-3 py-2"
+                                className="flex items-center gap-2 py-2 sm:gap-3 sm:py-2.5"
                               >
-                                <span>
-                                  {v.type === "full_size"
-                                    ? "Full size"
-                                    : "Decant"}{" "}
-                                  · {v.size_ml} ml · {v.sku}
-                                </span>
-                                <span className="tabular-nums text-foreground">
-                                  {formatLkr(Number(v.price_lkr))}
-                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm">
+                                    {v.type === "full_size"
+                                      ? "Full size"
+                                      : "Decant"}{" "}
+                                    · {v.size_ml} ml · {v.sku}
+                                  </p>
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                    <span className="tabular-nums text-foreground">
+                                      {formatLkr(Number(v.price_lkr))}
+                                    </span>
+                                    {!v.is_active ? (
+                                      <>
+                                        <span className="mx-1.5 text-border">
+                                          ·
+                                        </span>
+                                        Hidden
+                                      </>
+                                    ) : null}
+                                  </p>
+                                </div>
+                                <AdminFormDialog
+                                  triggerLabel="Edit"
+                                  title={`Edit variant · ${v.sku}`}
+                                  description={`${product.name} · ${v.size_ml} ml`}
+                                  size="lg"
+                                  triggerVariant="link"
+                                >
+                                  <AdminForm action={upsertVariant} bare>
+                                    <input type="hidden" name="id" value={v.id} />
+                                    <input
+                                      type="hidden"
+                                      name="product_id"
+                                      value={product.id}
+                                    />
+                                    <AdminFieldGrid cols={3}>
+                                      <AdminField label="Type">
+                                        <select
+                                          name="type"
+                                          className={adminFieldClass}
+                                          defaultValue={v.type}
+                                        >
+                                          <option value="full_size">
+                                            Full size
+                                          </option>
+                                          <option value="decant">Decant</option>
+                                        </select>
+                                      </AdminField>
+                                      <AdminField label="Size (ml)">
+                                        <input
+                                          name="size_ml"
+                                          type="number"
+                                          required
+                                          defaultValue={v.size_ml}
+                                          className={adminFieldClass}
+                                        />
+                                      </AdminField>
+                                      <AdminField label="Price (LKR)">
+                                        <input
+                                          name="price_lkr"
+                                          type="number"
+                                          required
+                                          defaultValue={v.price_lkr}
+                                          className={adminFieldClass}
+                                        />
+                                      </AdminField>
+                                      <AdminField
+                                        label="Compare-at (LKR)"
+                                        hint="Optional sale strikethrough"
+                                      >
+                                        <input
+                                          name="compare_at_price_lkr"
+                                          type="number"
+                                          defaultValue={
+                                            v.compare_at_price_lkr ?? ""
+                                          }
+                                          className={adminFieldClass}
+                                        />
+                                      </AdminField>
+                                    </AdminFieldGrid>
+                                    <AdminCheckbox
+                                      name="is_active"
+                                      label="Active on storefront"
+                                      defaultChecked={v.is_active}
+                                    />
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <button
+                                        type="submit"
+                                        className={adminButtonClass}
+                                      >
+                                        Save variant
+                                      </button>
+                                      <AdminDeleteForm
+                                        action={deleteVariant}
+                                        id={v.id}
+                                        label="Delete variant"
+                                        confirmMessage={`Delete ${v.sku}? This cannot be undone.`}
+                                      />
+                                    </div>
+                                  </AdminForm>
+                                </AdminFormDialog>
                               </li>
                             ))}
                           </ul>
                         ) : (
                           <p className="text-sm text-muted-foreground">
-                            No variants yet — use Add variant.
+                            No variants yet.
                           </p>
                         )}
                       </div>
 
-                      <div className="space-y-3 border-t border-border/40 pt-5">
-                        <p className="text-xs uppercase tracking-[0.18em] text-amber">
-                          Images
-                        </p>
-                        {images.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {images.map((src) => (
-                              <div
-                                key={src}
-                                className="relative size-16 overflow-hidden bg-muted"
-                              >
-                                <Image
-                                  src={src}
-                                  alt=""
-                                  fill
-                                  sizes="64px"
-                                  className="object-cover"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                        <AdminForm action={appendProductImages} bare>
-                          <input
-                            type="hidden"
-                            name="product_id"
-                            value={product.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="slug"
-                            value={product.slug}
-                          />
-                          <AdminFileField
-                            label="Add images"
-                            name="image_files"
-                            accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
-                            multiple
-                            required
-                          />
-                          <button type="submit" className={adminGhostButtonClass}>
-                            Upload
-                          </button>
-                        </AdminForm>
+                      <div className="border-t border-border/40 pt-5">
+                        <AdminDeleteForm
+                          action={deleteProduct}
+                          id={product.id}
+                          label="Delete product"
+                          confirmMessage={`Permanently delete "${product.name}"? Variants and inventory for this product will be removed.`}
+                        />
                       </div>
                     </div>
                   </AdminFormDialog>

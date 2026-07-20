@@ -69,17 +69,29 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     fetch("/api/account/addresses")
-      .then((r) => (r.ok ? r.json() : { addresses: [] }))
+      .then((r) =>
+        r.ok
+          ? r.json()
+          : { addresses: [], email: "", phone: "", full_name: "" },
+      )
       .then((data) => {
         const list = (data.addresses ?? []) as Address[];
         setAddresses(list);
+
+        const email = String(data.email ?? "");
+        const profilePhone = String(data.phone ?? "");
+        const fullName = String(data.full_name ?? "").trim();
+        const nameParts = fullName ? fullName.split(/\s+/) : [];
+        const profileFirst = nameParts[0] ?? "";
+        const profileLast = nameParts.slice(1).join(" ");
+
         const def = list.find((a) => a.is_default) ?? list[0];
         if (def) {
           setInfo({
             first_name: def.first_name,
             last_name: def.last_name,
-            email: info.email,
-            phone: def.phone,
+            email,
+            phone: def.phone || profilePhone,
           });
           setShip({
             address_line1: def.address_line1,
@@ -88,10 +100,16 @@ export default function CheckoutPage() {
             district: def.district,
             postal_code: def.postal_code ?? "",
           });
+        } else {
+          setInfo({
+            first_name: profileFirst,
+            last_name: profileLast,
+            email,
+            phone: profilePhone,
+          });
         }
       })
       .catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function placeOrder() {

@@ -3,6 +3,8 @@ import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
+  adminRowActionClass,
+  adminRowActionPrimaryClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus } from "@/components/admin/admin-status";
 import { createClient } from "@/lib/supabase/server";
@@ -108,7 +110,7 @@ function ReviewList({
     <ul className="divide-y divide-border/50">
       {reviews.map((review) => {
         const profile = profileMap.get(review.user_id);
-        const author = profile?.full_name || profile?.email || "Customer";
+        const author = profile?.full_name || profile?.email || "User";
         return (
           <li
             key={review.id}
@@ -137,19 +139,13 @@ function ReviewList({
             <form action={approveReview} className="shrink-0">
               <input type="hidden" name="id" value={review.id} />
               {review.is_approved ? (
-                <button
-                  type="submit"
-                  className="inline-flex min-h-9 items-center px-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground transition hover:text-amber"
-                >
+                <button type="submit" className={adminRowActionClass}>
                   Unpublish
                 </button>
               ) : (
                 <>
                   <input type="hidden" name="approved" value="on" />
-                  <button
-                    type="submit"
-                    className="inline-flex min-h-9 items-center px-1.5 text-[11px] uppercase tracking-[0.14em] text-amber transition hover:text-amber-soft"
-                  >
+                  <button type="submit" className={adminRowActionPrimaryClass}>
                     Approve
                   </button>
                 </>

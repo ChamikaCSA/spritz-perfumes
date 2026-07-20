@@ -1,6 +1,7 @@
 import Image from "next/image";
-import { upsertBrand } from "@/actions/admin";
+import { deleteBrand, upsertBrand } from "@/actions/admin";
 import { AdminFormDialog } from "@/components/admin/admin-form-dialog";
+import { AdminDeleteForm } from "@/components/admin/admin-delete-form";
 import {
   AdminField,
   AdminFieldGrid,
@@ -62,21 +63,10 @@ export default async function AdminBrandsPage() {
                       className={adminFieldClass}
                     />
                   </AdminField>
-                  <AdminField
-                    label="Slug"
-                    hint="URL path — lowercase, hyphens only"
-                  >
-                    <input
-                      name="slug"
-                      required
-                      placeholder="chanel"
-                      className={adminFieldClass}
-                    />
-                  </AdminField>
                   <AdminField label="Country">
                     <input
                       name="country"
-                      placeholder="France"
+                      placeholder="e.g. France"
                       className={adminFieldClass}
                     />
                   </AdminField>
@@ -156,7 +146,6 @@ export default async function AdminBrandsPage() {
                   title={`Edit ${brand.name}`}
                   size="lg"
                   triggerVariant="link"
-                  className="min-h-9 shrink-0 px-1.5 text-[11px]"
                 >
                   <AdminForm action={upsertBrand} bare>
                     <input type="hidden" name="id" value={brand.id} />
@@ -166,14 +155,6 @@ export default async function AdminBrandsPage() {
                           <input
                             name="name"
                             defaultValue={brand.name}
-                            required
-                            className={adminFieldClass}
-                          />
-                        </AdminField>
-                        <AdminField label="Slug">
-                          <input
-                            name="slug"
-                            defaultValue={brand.slug}
                             required
                             className={adminFieldClass}
                           />
@@ -202,20 +183,34 @@ export default async function AdminBrandsPage() {
                       </AdminField>
                       <AdminFieldGrid>
                         <AdminFileField
-                          label="Replace logo"
+                          label="Logo"
                           name="logo_file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                          existing={brand.logo_url ? [brand.logo_url] : []}
+                          existingFieldName="existing_logo_url"
+                          hint="Remove or replace · max 5MB"
                         />
                         <AdminFileField
-                          label="Replace banner"
+                          label="Banner"
                           name="banner_file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                          existing={brand.banner_url ? [brand.banner_url] : []}
+                          existingFieldName="existing_banner_url"
+                          hint="Remove or replace · max 5MB"
                         />
                       </AdminFieldGrid>
                     </AdminFormSection>
                     <button type="submit" className={adminButtonClass}>
                       Update brand
                     </button>
+                    <div className="border-t border-border/40 pt-5">
+                      <AdminDeleteForm
+                        action={deleteBrand}
+                        id={brand.id}
+                        label="Delete brand"
+                        confirmMessage={`Delete "${brand.name}"? You must remove all of its products first.`}
+                      />
+                    </div>
                   </AdminForm>
                 </AdminFormDialog>
               </li>

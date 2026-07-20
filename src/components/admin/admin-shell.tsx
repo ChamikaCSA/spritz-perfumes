@@ -136,3 +136,34 @@ export const adminButtonClass =
 
 export const adminGhostButtonClass =
   "inline-flex h-11 items-center justify-center border border-border px-3 text-xs uppercase tracking-[0.14em] text-muted-foreground transition hover:border-amber/50 hover:text-amber sm:px-4";
+
+/** Compact bordered control for row actions (View, Edit, Update, …). */
+export const adminRowActionClass =
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center border border-border bg-secondary/40 px-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-foreground transition hover:border-amber/50 hover:bg-secondary/70 hover:text-amber focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:px-3 sm:text-[11px]";
+
+/** Emphasized row action — primary or destructive-adjacent actions in lists. */
+export const adminRowActionPrimaryClass =
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center border border-amber/40 bg-amber/10 px-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-amber transition hover:border-amber/70 hover:bg-amber/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/40 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:px-3 sm:text-[11px]";
+
+/** Text link inside panels and dialogs (not for table row actions). */
+export const adminTextLinkClass =
+  "inline-flex min-h-9 cursor-pointer items-center text-xs uppercase tracking-[0.14em] text-amber underline decoration-amber/40 underline-offset-4 transition hover:decoration-amber sm:text-[11px]";
+
+export function AdminActions({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-flex shrink-0 items-center justify-end gap-1",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}

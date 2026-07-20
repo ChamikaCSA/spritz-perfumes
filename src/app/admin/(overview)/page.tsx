@@ -5,6 +5,7 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminStat,
+  adminTextLinkClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus, orderStatusTone } from "@/components/admin/admin-status";
 import { createClient } from "@/lib/supabase/server";
@@ -48,7 +49,7 @@ export default async function AdminOverviewPage() {
   const [
     { count: productCount },
     { count: orderCount },
-    { count: customerCount },
+    { count: userCount },
     { count: sealedCount },
     { count: pendingPaymentCount },
     { count: attentionOrderCount },
@@ -194,7 +195,7 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <AdminStat label="Products" value={String(productCount ?? 0)} />
         <AdminStat label="Sealed bottles" value={String(sealedCount ?? 0)} />
-        <AdminStat label="Customers" value={String(customerCount ?? 0)} />
+        <AdminStat label="Users" value={String(userCount ?? 0)} />
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
@@ -238,10 +239,7 @@ export default async function AdminOverviewPage() {
         <AdminPanel
           title="Recent orders"
           action={
-            <Link
-              href="/admin/orders"
-              className="inline-flex min-h-9 items-center text-[11px] uppercase tracking-[0.16em] text-amber sm:min-h-11 sm:text-xs"
-            >
+            <Link href="/admin/orders" className={adminTextLinkClass}>
               View all
             </Link>
           }

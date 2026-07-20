@@ -10,11 +10,11 @@ export function SiteFooter() {
           <div className="md:col-span-2 lg:col-span-2">
             <div className="flex items-center gap-4">
               <Image
-                src="/brand/logo-amber.png"
+                src="/brand/spritz-logo.png"
                 alt="Spritz Perfumes"
-                width={200}
-                height={200}
-                className="h-12 w-auto shrink-0 object-contain sm:h-14"
+                width={829}
+                height={300}
+                className="h-9 w-auto max-w-44 object-contain sm:h-10 sm:max-w-52"
               />
               <div className="min-w-0 max-w-sm">
                 <p className="text-sm leading-relaxed text-muted-foreground">

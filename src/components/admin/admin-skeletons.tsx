@@ -216,12 +216,12 @@ export function AdminBrandsSkeleton() {
   );
 }
 
-export function AdminCustomersSkeleton() {
+export function AdminUsersSkeleton() {
   return (
     <div
       className="space-y-5 sm:space-y-8"
       aria-busy="true"
-      aria-label="Loading customers"
+      aria-label="Loading users"
     >
       <AdminPageHeaderSkeleton />
       <AdminPanelListSkeleton rows={8} withTable tableColumns={5} />
@@ -229,19 +229,48 @@ export function AdminCustomersSkeleton() {
   );
 }
 
-export function AdminCustomerDetailSkeleton() {
+export function AdminUserDetailSkeleton() {
   return (
     <div
       className="space-y-5 sm:space-y-8"
       aria-busy="true"
-      aria-label="Loading customer"
+      aria-label="Loading user"
     >
-      <div>
-        <Skeleton className="mb-3 h-3 w-24" />
-        <AdminPageHeaderSkeleton />
-      </div>
+      <AdminPageHeaderSkeleton />
       <AdminPanelListSkeleton rows={4} title />
       <AdminPanelListSkeleton rows={2} title />
+    </div>
+  );
+}
+
+export function AdminOrderDetailSkeleton() {
+  return (
+    <div
+      className="space-y-5 sm:space-y-8"
+      aria-busy="true"
+      aria-label="Loading order"
+    >
+      <AdminPageHeaderSkeleton />
+      <section className="min-w-0 border border-border/60 bg-secondary/20 p-4 sm:p-6">
+        <Skeleton className="mb-5 h-7 w-28 sm:h-8 sm:w-36" />
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-32" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+          <Skeleton className="h-11 w-32" />
+        </div>
+      </section>
+      <AdminPanelListSkeleton rows={3} title />
+      <AdminPanelListSkeleton rows={4} title />
+      <section className="min-w-0 border border-border/60 bg-secondary/20 p-4 sm:p-6">
+        <Skeleton className="mb-5 h-7 w-28 sm:h-8 sm:w-36" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-20" />
+          <Skeleton className="h-9 w-28" />
+        </div>
+      </section>
     </div>
   );
 }

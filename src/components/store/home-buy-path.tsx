@@ -242,7 +242,7 @@ export function HomeBuyPath() {
       <div className="grid md:grid-cols-2">
         <FormatPanel
           href="/shop?type=decant"
-          image="/home/format-decant.png"
+          image="/home/decant.png"
           eyebrow="Start here"
           title="Decants"
           description="2 · 5 · 10 ml pours to test-drive a fragrance before you commit."
@@ -250,7 +250,7 @@ export function HomeBuyPath() {
         />
         <FormatPanel
           href="/shop?type=full_size"
-          image="/home/format-full-size.png"
+          image="/home/full-size.png"
           eyebrow="Already sure"
           title="Full size"
           description="Factory-sealed retail bottles. Gift-ready, collection-worthy, 100% authentic."

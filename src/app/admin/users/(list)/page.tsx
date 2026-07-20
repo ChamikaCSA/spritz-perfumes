@@ -3,20 +3,21 @@ import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
+  adminRowActionClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus } from "@/components/admin/admin-status";
 import { createClient } from "@/lib/supabase/server";
 import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
 
-export const metadata = { title: "Customers · Admin" };
+export const metadata = { title: "Users · Admin" };
 
-export default async function AdminCustomersPage() {
+export default async function AdminUsersPage() {
   if (!isSupabaseConfigured()) {
     return (
       <div>
         <AdminPageHeader
-          title="Customers"
-          description="Connect Supabase to view customers."
+          title="Users"
+          description="Connect Supabase to view user accounts."
         />
       </div>
     );
@@ -45,8 +46,8 @@ export default async function AdminCustomersPage() {
   return (
     <div className="space-y-5 sm:space-y-8">
       <AdminPageHeader
-        title="Customers"
-        description="Profiles with order count and lifetime spend."
+        title="Users"
+        description="All accounts with role, order count, and lifetime spend."
       />
 
       <AdminPanel>
@@ -81,10 +82,7 @@ export default async function AdminCustomersPage() {
                         </span>
                       </div>
                     </div>
-                    <Link
-                      href={`/admin/customers/${p.id}`}
-                      className="inline-flex min-h-9 shrink-0 items-center px-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-amber"
-                    >
+                    <Link href={`/admin/users/${p.id}`} className={adminRowActionClass}>
                       View
                     </Link>
                   </li>
@@ -100,15 +98,15 @@ export default async function AdminCustomersPage() {
                     <th className="px-3 py-2.5 font-normal">Email</th>
                     <th className="px-3 py-2.5 font-normal">Role</th>
                     <th className="px-3 py-2.5 font-normal text-right">Orders</th>
-                    <th className="px-3 py-2.5 font-normal text-right">LTV</th>
-                    <th className="px-3 py-2.5 font-normal" />
+                    <th className="px-3 py-2.5 text-right font-normal">LTV</th>
+                    <th className="px-3 py-2.5 text-right font-normal">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {(profiles ?? []).map((p) => {
                     const stats = spend.get(p.id) ?? { count: 0, total: 0 };
                     return (
-                      <tr key={p.id} className="hover:bg-secondary/20">
+                      <tr key={p.id}>
                         <td className="px-3 py-2 font-medium">
                           {p.full_name || "—"}
                         </td>
@@ -130,8 +128,8 @@ export default async function AdminCustomersPage() {
                         </td>
                         <td className="px-3 py-2 text-right">
                           <Link
-                            href={`/admin/customers/${p.id}`}
-                            className="inline-flex min-h-9 items-center text-[11px] uppercase tracking-[0.14em] text-muted-foreground hover:text-amber"
+                            href={`/admin/users/${p.id}`}
+                            className={adminRowActionClass}
                           >
                             View
                           </Link>
@@ -144,7 +142,7 @@ export default async function AdminCustomersPage() {
             </div>
           </>
         ) : (
-          <AdminEmpty>No customers yet</AdminEmpty>
+          <AdminEmpty>No users yet</AdminEmpty>
         )}
       </AdminPanel>
     </div>

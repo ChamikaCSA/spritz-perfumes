@@ -1,3 +1,7 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useAdminFormDialog } from "@/components/admin/admin-form-dialog";
 import { cn } from "@/lib/utils";
 import {
   adminFieldClass,
@@ -9,15 +13,27 @@ export function AdminForm({
   className,
   action,
   bare = false,
+  closeOnSuccess = true,
 }: {
   children: React.ReactNode;
   className?: string;
   action?: (formData: FormData) => void | Promise<void>;
   bare?: boolean;
+  closeOnSuccess?: boolean;
 }) {
+  const dialog = useAdminFormDialog();
+  const router = useRouter();
+
+  async function handleSubmit(formData: FormData) {
+    if (!action) return;
+    await action(formData);
+    if (closeOnSuccess && dialog) dialog.close();
+    router.refresh();
+  }
+
   return (
     <form
-      action={action}
+      action={handleSubmit}
       className={cn(
         "space-y-4 sm:space-y-6",
         !bare && "border border-border/60 bg-secondary/20 p-4 sm:p-6",
@@ -150,35 +166,6 @@ export function AdminCheckbox({
   );
 }
 
-export function AdminFileField({
-  label,
-  name,
-  accept,
-  multiple,
-  required,
-  hint,
-  className,
-}: {
-  label: string;
-  name: string;
-  accept?: string;
-  multiple?: boolean;
-  required?: boolean;
-  hint?: string;
-  className?: string;
-}) {
-  return (
-    <AdminField label={label} hint={hint} className={className}>
-      <input
-        type="file"
-        name={name}
-        accept={accept}
-        multiple={multiple}
-        required={required}
-        className="block w-full text-sm file:mr-3 file:border-0 file:bg-secondary file:px-3 file:py-2 file:uppercase file:tracking-[0.16em] file:text-foreground"
-      />
-    </AdminField>
-  );
-}
+export { AdminFileField } from "@/components/admin/admin-file-field";
 
 export { adminFieldClass, adminTextareaClass };

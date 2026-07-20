@@ -12,6 +12,7 @@ import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
+  AdminActions,
   adminButtonClass,
   adminGhostButtonClass,
 } from "@/components/admin/admin-shell";
@@ -162,7 +163,7 @@ export default async function AdminInventoryPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-0.5">
+                  <AdminActions>
                     {lot.status === "sealed" ? (
                       <OpenLotButton lotId={lot.id} />
                     ) : null}
@@ -173,7 +174,6 @@ export default async function AdminInventoryPage() {
                         description={`${brandName} · ${product?.name}`}
                         size="md"
                         triggerVariant="link"
-                        className="min-h-9 px-1.5 text-[11px]"
                       >
                         <AdminForm action={adjustInventory} bare>
                           <input type="hidden" name="lot_id" value={lot.id} />
@@ -214,7 +214,7 @@ export default async function AdminInventoryPage() {
                         </AdminForm>
                       </AdminFormDialog>
                     ) : null}
-                  </div>
+                  </AdminActions>
                 </li>
               );
             })}

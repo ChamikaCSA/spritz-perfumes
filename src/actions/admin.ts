@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
+import { buildVariantSku } from "@/lib/variant-sku";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -35,27 +36,41 @@ async function requireAdmin() {
   return { service: createServiceClient(), userId: user.id };
 }
 
-function parseManualImageUrls(formData: FormData) {
-  return String(formData.get("images") || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 function getImageFiles(formData: FormData, key = "image_files") {
   return formData
     .getAll(key)
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 }
 
-function sanitizeSlug(slug: string) {
+function sanitizeSlug(slug: string, fallback = "item") {
   return (
     slug
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9-_]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "product"
+      .replace(/^-+|-+$/g, "") || fallback
   );
+}
+
+function slugFromName(name: string, fallback = "item") {
+  return sanitizeSlug(name, fallback);
+}
+
+async function uniqueSlug(
+  service: SupabaseClient,
+  table: "products" | "brands",
+  name: string,
+  excludeId?: string,
+) {
+  const base = slugFromName(name, table === "brands" ? "brand" : "product");
+  for (let n = 0; n < 50; n++) {
+    const candidate = n === 0 ? base : `${base}-${n + 1}`;
+    let query = service.from(table).select("id").eq("slug", candidate);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data } = await query.maybeSingle();
+    if (!data) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
 }
 
 function splitList(value: FormDataEntryValue | null) {
@@ -63,6 +78,75 @@ function splitList(value: FormDataEntryValue | null) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+async function uniqueVariantSku(
+  service: SupabaseClient,
+  base: string,
+  excludeId?: string,
+) {
+  for (let n = 0; n < 50; n++) {
+    const candidate = n === 0 ? base : `${base}-${n + 1}`;
+    let query = service.from("product_variants").select("id").eq("sku", candidate);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data } = await query.maybeSingle();
+    if (!data) return candidate;
+  }
+  return `${base}-${Date.now().toString(36).slice(-4)}`;
+}
+
+type BrandRef = { name: string; slug: string };
+
+function parseBrandRef(
+  brands: BrandRef | BrandRef[] | null | undefined,
+): BrandRef {
+  if (Array.isArray(brands)) return brands[0] ?? { name: "Brand", slug: "brand" };
+  return brands ?? { name: "Brand", slug: "brand" };
+}
+
+async function resolveVariantSku(
+  service: SupabaseClient,
+  input: {
+    productId: string;
+    type: string;
+    sizeMl: number;
+    variantId?: string;
+  },
+) {
+  const { data: product, error } = await service
+    .from("products")
+    .select("name, slug, brands(name, slug)")
+    .eq("id", input.productId)
+    .single();
+  if (error || !product) throw new Error(error?.message ?? "Product not found");
+
+  const brand = parseBrandRef(
+    product.brands as BrandRef | BrandRef[] | null | undefined,
+  );
+  const base = buildVariantSku({
+    brandName: brand.name,
+    brandSlug: brand.slug,
+    productName: product.name,
+    productSlug: product.slug,
+    type: input.type,
+    sizeMl: input.sizeMl,
+  });
+
+  if (input.variantId) {
+    const { data: existing } = await service
+      .from("product_variants")
+      .select("sku, type, size_ml")
+      .eq("id", input.variantId)
+      .single();
+    const identityChanged =
+      !existing ||
+      existing.type !== input.type ||
+      Number(existing.size_ml) !== input.sizeMl;
+    if (!identityChanged && existing?.sku) return existing.sku;
+    return uniqueVariantSku(service, base, input.variantId);
+  }
+
+  return uniqueVariantSku(service, base);
 }
 
 async function uploadToBucket(
@@ -105,12 +189,12 @@ function revalidateCatalog() {
   revalidatePath("/brands");
 }
 
-function productPayload(formData: FormData, images: string[]) {
+function productPayload(formData: FormData, images: string[], slug: string) {
   const year = String(formData.get("year_released") || "");
   return {
     brand_id: String(formData.get("brand_id")),
     name: String(formData.get("name")),
-    slug: String(formData.get("slug")),
+    slug,
     concentration: String(formData.get("concentration")),
     description: String(formData.get("description") || ""),
     notes: {
@@ -135,25 +219,36 @@ function productPayload(formData: FormData, images: string[]) {
 export async function upsertProduct(formData: FormData) {
   const { service } = await requireAdmin();
   const id = String(formData.get("id") || "");
-  const slug = String(formData.get("slug"));
+  const name = String(formData.get("name") || "");
+  if (!name.trim()) throw new Error("Name is required");
+
+  let slug: string;
+  if (id) {
+    const { data: existing, error } = await service
+      .from("products")
+      .select("slug")
+      .eq("id", id)
+      .single();
+    if (error) throw new Error(error.message);
+    slug = existing.slug;
+  } else {
+    slug = await uniqueSlug(service, "products", name);
+  }
+
   const uploaded = await uploadToBucket(
     service,
     "product-images",
-    sanitizeSlug(slug),
+    slug,
     getImageFiles(formData),
   );
 
-  let images = [...parseManualImageUrls(formData), ...uploaded];
-  if (id && !images.length) {
-    const { data } = await service
-      .from("products")
-      .select("images")
-      .eq("id", id)
-      .single();
-    images = (data?.images as string[]) ?? [];
-  }
+  const kept = formData
+    .getAll("existing_images")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  const images = id ? [...kept, ...uploaded] : uploaded.length ? uploaded : kept;
 
-  const payload = productPayload(formData, images);
+  const payload = productPayload(formData, images, slug);
 
   if (id) {
     const notesEmpty =
@@ -181,17 +276,43 @@ export async function upsertProduct(formData: FormData) {
 export async function deleteProduct(formData: FormData) {
   const { service } = await requireAdmin();
   const id = String(formData.get("id"));
-  const hard = formData.get("hard") === "on";
-  if (hard) {
-    const { error } = await service.from("products").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await service
-      .from("products")
-      .update({ is_active: false })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
+
+  const { error: lotsError } = await service
+    .from("inventory_lots")
+    .delete()
+    .eq("product_id", id);
+  if (lotsError) throw new Error(lotsError.message);
+
+  const { error } = await service.from("products").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidateCatalog();
+}
+
+export async function deleteVariant(formData: FormData) {
+  const { service } = await requireAdmin();
+  const id = String(formData.get("id"));
+  const { error } = await service.from("product_variants").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidateCatalog();
+}
+
+export async function deleteBrand(formData: FormData) {
+  const { service } = await requireAdmin();
+  const id = String(formData.get("id"));
+
+  const { count, error: countError } = await service
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("brand_id", id);
+  if (countError) throw new Error(countError.message);
+  if (count && count > 0) {
+    throw new Error("Remove all products for this brand before deleting it.");
   }
+
+  const { error } = await service.from("brands").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+
   revalidateCatalog();
 }
 
@@ -200,7 +321,7 @@ export async function duplicateProduct(formData: FormData) {
   const id = String(formData.get("id"));
   const { data: product, error } = await service
     .from("products")
-    .select("*, product_variants(*)")
+    .select("*, brands(name, slug), product_variants(*)")
     .eq("id", id)
     .single();
   if (error || !product) throw new Error(error?.message ?? "Not found");
@@ -240,17 +361,32 @@ export async function duplicateProduct(formData: FormData) {
     is_active: boolean;
   }[];
   if (variants.length) {
-    const { error: vError } = await service.from("product_variants").insert(
-      variants.map((v) => ({
+    const brand = parseBrandRef(
+      product.brands as BrandRef | BrandRef[] | null | undefined,
+    );
+    const copiedName = `${product.name} (Copy)`;
+    const variantRows = await Promise.all(
+      variants.map(async (v) => ({
         product_id: created.id,
         type: v.type,
         size_ml: v.size_ml,
         price_lkr: v.price_lkr,
         compare_at_price_lkr: v.compare_at_price_lkr,
-        sku: `${v.sku}-COPY-${Date.now().toString(36).slice(-4)}`,
+        sku: await uniqueVariantSku(
+          service,
+          buildVariantSku({
+            brandName: brand.name,
+            brandSlug: brand.slug,
+            productName: copiedName,
+            productSlug: slug,
+            type: v.type,
+            sizeMl: Number(v.size_ml),
+          }),
+        ),
         is_active: v.is_active,
       })),
     );
+    const { error: vError } = await service.from("product_variants").insert(variantRows);
     if (vError) throw new Error(vError.message);
   }
 
@@ -297,13 +433,22 @@ export async function upsertVariant(formData: FormData) {
   const { service } = await requireAdmin();
   const id = String(formData.get("id") || "");
   const compare = String(formData.get("compare_at_price_lkr") || "");
+  const productId = String(formData.get("product_id"));
+  const type = String(formData.get("type"));
+  const sizeMl = Number(formData.get("size_ml"));
+  const sku = await resolveVariantSku(service, {
+    productId,
+    type,
+    sizeMl,
+    variantId: id || undefined,
+  });
   const payload = {
-    product_id: String(formData.get("product_id")),
-    type: String(formData.get("type")),
-    size_ml: Number(formData.get("size_ml")),
+    product_id: productId,
+    type,
+    size_ml: sizeMl,
     price_lkr: Number(formData.get("price_lkr")),
     compare_at_price_lkr: compare ? Number(compare) : null,
-    sku: String(formData.get("sku")),
+    sku,
     is_active: formData.get("is_active") === "on",
   };
 
@@ -318,49 +463,8 @@ export async function upsertVariant(formData: FormData) {
     if (error) throw new Error(error.message);
   }
 
-  revalidatePath("/admin/products");
-}
-
-export async function importProductsCsv(formData: FormData) {
-  const { service } = await requireAdmin();
-  const file = formData.get("csv");
-  if (!(file instanceof File) || !file.size) throw new Error("CSV required");
-  const text = await file.text();
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length < 2) throw new Error("CSV has no rows");
-
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const { data: brands } = await service.from("brands").select("id, slug");
-  const brandMap = new Map((brands ?? []).map((b) => [b.slug, b.id]));
-
-  for (const line of lines.slice(1)) {
-    const cols = line.split(",").map((c) => c.trim());
-    const row = Object.fromEntries(headers.map((h, i) => [h, cols[i] ?? ""]));
-    const brandId = brandMap.get(row.brand_slug);
-    if (!brandId) continue;
-    await service.from("products").upsert(
-      {
-        brand_id: brandId,
-        name: row.name,
-        slug: row.slug,
-        concentration: row.concentration || "EDP",
-        description: row.description || "",
-        collection: row.collection || "core",
-        is_active: row.is_active !== "false",
-        notes: {
-          top: (row.notes_top || "").split("|").filter(Boolean),
-          heart: (row.notes_heart || "").split("|").filter(Boolean),
-          base: (row.notes_base || "").split("|").filter(Boolean),
-        },
-      },
-      { onConflict: "slug" },
-    );
-  }
-
   revalidateCatalog();
+  revalidatePath(`/admin/products`);
 }
 
 export async function receiveInventory(formData: FormData) {
@@ -471,6 +575,7 @@ export async function updateOrderStatus(formData: FormData) {
   const { error } = await service.from("orders").update(payload).eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${id}`);
   revalidatePath(`/orders/${id}`);
   revalidatePath(`/admin/orders/${id}/invoice`);
 }
@@ -478,7 +583,22 @@ export async function updateOrderStatus(formData: FormData) {
 export async function upsertBrand(formData: FormData) {
   const { service } = await requireAdmin();
   const id = String(formData.get("id") || "");
-  const slug = sanitizeSlug(String(formData.get("slug")));
+  const name = String(formData.get("name") || "");
+  if (!name.trim()) throw new Error("Name is required");
+
+  let slug: string;
+  if (id) {
+    const { data: existing, error } = await service
+      .from("brands")
+      .select("slug")
+      .eq("id", id)
+      .single();
+    if (error) throw new Error(error.message);
+    slug = existing.slug;
+  } else {
+    slug = await uniqueSlug(service, "brands", name);
+  }
+
   const logoFiles = getImageFiles(formData, "logo_file");
   const bannerFiles = getImageFiles(formData, "banner_file");
   const logos = await uploadToBucket(service, "brand-assets", slug, logoFiles);
@@ -489,15 +609,20 @@ export async function upsertBrand(formData: FormData) {
     bannerFiles,
   );
 
+  const keptLogo = String(formData.get("existing_logo_url") || "").trim();
+  const keptBanner = String(formData.get("existing_banner_url") || "").trim();
+
   const payload: Record<string, unknown> = {
-    name: String(formData.get("name")),
+    name,
     slug,
     description: String(formData.get("description") || "") || null,
     country: String(formData.get("country") || "") || null,
     website: String(formData.get("website") || "") || null,
   };
   if (logos[0]) payload.logo_url = logos[0];
+  else if (id) payload.logo_url = keptLogo || null;
   if (banners[0]) payload.banner_url = banners[0];
+  else if (id) payload.banner_url = keptBanner || null;
 
   if (id) {
     const { error } = await service.from("brands").update(payload).eq("id", id);

@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: "/product/:slug",
         permanent: true,
       },
+      {
+        source: "/admin/customers",
+        destination: "/admin/users",
+        permanent: true,
+      },
+      {
+        source: "/admin/customers/:id",
+        destination: "/admin/users/:id",
+        permanent: true,
+      },
     ];
   },
   images: {

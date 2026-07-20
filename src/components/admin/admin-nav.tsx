@@ -39,8 +39,8 @@ const links: {
   { href: "/admin/products", label: "Products", short: "Items", icon: Tag },
   { href: "/admin/brands", label: "Brands", short: "Brands", icon: Store },
   {
-    href: "/admin/customers",
-    label: "Customers",
+    href: "/admin/users",
+    label: "Users",
     short: "Users",
     icon: Users,
   },
@@ -57,11 +57,11 @@ function SidebarBrand() {
   return (
     <Link href="/admin" className="flex min-w-0 items-center gap-3 px-1">
       <Image
-        src="/brand/logo-amber.png"
+        src="/brand/spritz-logo.png"
         alt="Spritz Perfumes"
-        width={200}
-        height={200}
-        className="h-11 w-auto object-contain sm:h-14 lg:h-16"
+        width={829}
+        height={300}
+        className="h-8 w-auto max-w-40 object-contain sm:h-9 sm:max-w-44"
       />
       <span className="shrink-0 text-xs uppercase tracking-[0.22em] text-muted-foreground">
         Admin
@@ -124,11 +124,11 @@ export function AdminMobileHeader() {
       <div className="flex h-12 items-center justify-between gap-2 px-3 sm:px-4">
         <Link href="/admin" className="flex min-w-0 items-center gap-2">
           <Image
-            src="/brand/logo-amber.png"
+            src="/brand/spritz-logo.png"
             alt="Spritz Perfumes"
-            width={200}
-            height={200}
-            className="h-8 w-auto object-contain"
+            width={829}
+            height={300}
+            className="h-7 w-auto max-w-36 object-contain"
           />
           <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Admin

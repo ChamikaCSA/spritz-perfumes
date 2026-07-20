@@ -76,12 +76,12 @@ export function SiteHeader() {
             className="block"
           >
             <Image
-              src="/brand/logo-amber.png"
+              src="/brand/spritz-logo.png"
               alt="Spritz Perfumes"
-              width={220}
-              height={220}
+              width={829}
+              height={300}
               priority
-              className="h-12 w-auto object-contain transition-[filter] duration-300 hover:brightness-125 sm:h-14 lg:h-16"
+              className="h-8 w-auto max-w-40 object-contain object-left transition-[filter] duration-300 hover:brightness-125 sm:h-9 sm:max-w-44 lg:h-10 lg:max-w-52"
             />
           </motion.span>
         </Link>
