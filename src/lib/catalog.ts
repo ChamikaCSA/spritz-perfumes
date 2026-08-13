@@ -1,4 +1,14 @@
 import { DEMO_BRANDS, DEMO_PRODUCTS } from "@/lib/demo-data";
+import {
+  PAGE_SIZE,
+  PRODUCT_FETCH_CAP,
+  emptyPage,
+  pageFromTotal,
+  pageRange,
+  paginate,
+  parsePage,
+  type PageResult,
+} from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Brand,
@@ -12,6 +22,12 @@ import type {
 } from "@/lib/types";
 import { defaultSortOrder } from "@/lib/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+export type ProductQuery = ProductFilters & {
+  page?: number | string;
+  pageSize?: number;
+  limit?: number;
+};
 
 type ProductRow = Product & {
   brands?: Brand | Brand[] | null;
@@ -137,20 +153,137 @@ function sortDemo(
   }
 }
 
+function needsInMemoryProductWork(filters?: ProductQuery) {
+  const sortBy = filters?.sort ?? "name";
+  return Boolean(
+    filters?.note ||
+      filters?.min_price ||
+      filters?.max_price ||
+      filters?.available === "1" ||
+      sortBy === "price" ||
+      sortBy === "rating" ||
+      sortBy === "popularity",
+  );
+}
+
+function pagingFromQuery(filters?: ProductQuery) {
+  if (filters?.limit && filters.page == null && filters.pageSize == null) {
+    return { page: 1, pageSize: Math.max(1, filters.limit), mode: "limit" as const };
+  }
+  if (filters?.page != null || filters?.pageSize != null) {
+    return {
+      page: parsePage(filters?.page),
+      pageSize: filters?.pageSize ?? PAGE_SIZE.shop,
+      mode: "page" as const,
+    };
+  }
+  return null;
+}
+
+async function applyInMemoryProductFilters(
+  products: Product[],
+  filters?: ProductQuery,
+) {
+  let list = products;
+  if (filters?.note) {
+    const n = filters.note.toLowerCase();
+    list = list.filter((p) =>
+      [...p.notes.top, ...p.notes.heart, ...p.notes.base]
+        .join(" ")
+        .toLowerCase()
+        .includes(n),
+    );
+  }
+  if (filters?.min_price) {
+    const min = Number(filters.min_price);
+    list = list.filter((p) => lowestPrice(p) >= min);
+  }
+  if (filters?.max_price) {
+    const max = Number(filters.max_price);
+    list = list.filter((p) => lowestPrice(p) <= max);
+  }
+
+  if (filters?.available === "1") {
+    const withStock = await Promise.all(
+      list.map(async (p) => {
+        const stock = await getStockSummary(p.id);
+        const ok = (p.variants ?? []).some((v) =>
+          v.type === "full_size"
+            ? stock.sealedBottles >= 1
+            : stock.openMl >= Number(v.size_ml),
+        );
+        return ok ? p : null;
+      }),
+    );
+    list = withStock.filter(Boolean) as Product[];
+  }
+
+  const sortBy = filters?.sort ?? "name";
+  const sortOrder = filters?.order ?? defaultSortOrder(sortBy);
+  const mul = sortOrder === "asc" ? 1 : -1;
+  if (sortBy === "price") {
+    list.sort((a, b) => mul * (lowestPrice(a) - lowestPrice(b)));
+  } else if (sortBy === "rating") {
+    list.sort((a, b) => mul * ((a.avg_rating ?? 0) - (b.avg_rating ?? 0)));
+  } else if (sortBy === "popularity") {
+    const sales = await getSalesVolumeMap();
+    list.sort(
+      (a, b) => mul * ((sales.get(a.id) ?? 0) - (sales.get(b.id) ?? 0)),
+    );
+  }
+
+  return list;
+}
+
+function mapProductRows(
+  data: ProductRow[],
+  filters?: ProductQuery,
+): Product[] {
+  return data.map((row) =>
+    normalizeProduct({
+      ...(row as Product),
+      brands: row.brands,
+      product_variants: (row.product_variants ?? []).filter(
+        (v) => v.is_active && (!filters?.type || v.type === filters.type),
+      ),
+      product_rating_summary: row.product_rating_summary,
+    }),
+  );
+}
+
 export async function getProducts(
-  filters?: ProductFilters,
+  filters?: ProductQuery,
 ): Promise<Product[]> {
+  const page = await getProductPage(filters);
+  return page.items;
+}
+
+export async function getProductPage(
+  filters?: ProductQuery,
+): Promise<PageResult<Product>> {
+  const paging = pagingFromQuery(filters) ?? {
+    page: 1,
+    pageSize: PRODUCT_FETCH_CAP,
+    mode: "all" as const,
+  };
+
   if (!isSupabaseConfigured()) {
-    return filterDemo(DEMO_PRODUCTS, filters);
+    const list = filterDemo(DEMO_PRODUCTS, filters);
+    if (paging.mode === "all") {
+      return pageFromTotal(list, list.length, 1, Math.max(list.length, 1));
+    }
+    return paginate(list, paging.page, paging.pageSize);
   }
 
   const supabase = await createClient();
   const brandJoin = filters?.brand ? "brands!inner(*)" : "brands(*)";
+  const inMemory = needsInMemoryProductWork(filters);
 
   let query = supabase
     .from("products")
     .select(
       `*, ${brandJoin}, product_variants!inner(*), product_rating_summary(avg_rating, review_count)`,
+      { count: "exact" },
     )
     .eq("is_active", true)
     .eq("product_variants.is_active", true);
@@ -193,72 +326,39 @@ export async function getProducts(
     query = query.order("name");
   }
 
-  const { data, error } = await query;
+  if (!inMemory && paging.mode !== "all") {
+    const { from, to } = pageRange(paging.page, paging.pageSize);
+    query = query.range(from, to);
+  } else if (inMemory || paging.mode === "all") {
+    query = query.limit(PRODUCT_FETCH_CAP);
+  }
+
+  const { data, error, count } = await query;
   if (error) {
     console.error("getProducts failed", error.message);
-    return [];
-  }
-  if (!data) return [];
-
-  let products = data.map((row) =>
-    normalizeProduct({
-      ...(row as Product),
-      brands: (row as ProductRow).brands,
-      product_variants: ((row as ProductRow).product_variants ?? []).filter(
-        (v) => v.is_active && (!filters?.type || v.type === filters.type),
-      ),
-      product_rating_summary: (row as ProductRow).product_rating_summary,
-    }),
-  );
-
-  if (filters?.note) {
-    const n = filters.note.toLowerCase();
-    products = products.filter((p) =>
-      [...p.notes.top, ...p.notes.heart, ...p.notes.base]
-        .join(" ")
-        .toLowerCase()
-        .includes(n),
-    );
-  }
-  if (filters?.min_price) {
-    const min = Number(filters.min_price);
-    products = products.filter((p) => lowestPrice(p) >= min);
-  }
-  if (filters?.max_price) {
-    const max = Number(filters.max_price);
-    products = products.filter((p) => lowestPrice(p) <= max);
+    return emptyPage<Product>(paging.page, paging.pageSize);
   }
 
-  if (filters?.available === "1") {
-    const withStock = await Promise.all(
-      products.map(async (p) => {
-        const stock = await getStockSummary(p.id);
-        const ok = (p.variants ?? []).some((v) =>
-          v.type === "full_size"
-            ? stock.sealedBottles >= 1
-            : stock.openMl >= Number(v.size_ml),
-        );
-        return ok ? p : null;
-      }),
-    );
-    products = withStock.filter(Boolean) as Product[];
+  let products = mapProductRows((data ?? []) as ProductRow[], filters);
+
+  if (inMemory) {
+    products = await applyInMemoryProductFilters(products, filters);
+    if (paging.mode === "all") {
+      return pageFromTotal(
+        products,
+        products.length,
+        1,
+        Math.max(products.length, 1),
+      );
+    }
+    return paginate(products, paging.page, paging.pageSize);
   }
 
-  const mul = sortOrder === "asc" ? 1 : -1;
-  if (sortBy === "price") {
-    products.sort((a, b) => mul * (lowestPrice(a) - lowestPrice(b)));
-  } else if (sortBy === "rating") {
-    products.sort(
-      (a, b) => mul * ((a.avg_rating ?? 0) - (b.avg_rating ?? 0)),
-    );
-  } else if (sortBy === "popularity") {
-    const sales = await getSalesVolumeMap();
-    products.sort(
-      (a, b) => mul * ((sales.get(a.id) ?? 0) - (sales.get(b.id) ?? 0)),
-    );
+  const total = count ?? products.length;
+  if (paging.mode === "all") {
+    return pageFromTotal(products, total, 1, Math.max(total, 1));
   }
-
-  return products;
+  return pageFromTotal(products, total, paging.page, paging.pageSize);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -317,11 +417,17 @@ export async function getBrandBySlug(slug: string): Promise<Brand | null> {
   return data as Brand;
 }
 
-export async function getBrands(): Promise<Brand[]> {
-  if (!isSupabaseConfigured()) return DEMO_BRANDS;
+export async function getBrands(options?: {
+  limit?: number;
+}): Promise<Brand[]> {
+  if (!isSupabaseConfigured()) {
+    return options?.limit ? DEMO_BRANDS.slice(0, options.limit) : DEMO_BRANDS;
+  }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("brands").select("*").order("name");
+  let query = supabase.from("brands").select("*").order("name");
+  if (options?.limit) query = query.limit(options.limit);
+  const { data, error } = await query;
   if (error) {
     console.error("getBrands failed", error.message);
     return [];
@@ -329,24 +435,106 @@ export async function getBrands(): Promise<Brand[]> {
   return (data as Brand[]) ?? [];
 }
 
+export async function getBrandPage(
+  page = 1,
+  pageSize = PAGE_SIZE.brands,
+): Promise<PageResult<Brand>> {
+  if (!isSupabaseConfigured()) {
+    return paginate(DEMO_BRANDS, page, pageSize);
+  }
+
+  const supabase = await createClient();
+  const { from, to } = pageRange(page, pageSize);
+  const { data, error, count } = await supabase
+    .from("brands")
+    .select("*", { count: "exact" })
+    .order("name")
+    .range(from, to);
+  if (error) {
+    console.error("getBrandPage failed", error.message);
+    return emptyPage<Brand>(page, pageSize);
+  }
+  return pageFromTotal((data as Brand[]) ?? [], count ?? 0, page, pageSize);
+}
+
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  const unique = [...new Set(ids.filter(Boolean))].slice(0, 100);
+  if (!unique.length) return [];
+
+  if (!isSupabaseConfigured()) {
+    const map = new Map(DEMO_PRODUCTS.map((p) => [p.id, p]));
+    return unique.map((id) => map.get(id)).filter(Boolean) as Product[];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "*, brands(*), product_variants(*), product_rating_summary(avg_rating, review_count)",
+    )
+    .in("id", unique)
+    .eq("is_active", true);
+  if (error) {
+    console.error("getProductsByIds failed", error.message);
+    return [];
+  }
+
+  const mapped = mapProductRows((data ?? []) as ProductRow[]);
+  const byId = new Map(mapped.map((p) => [p.id, p]));
+  return unique.map((id) => byId.get(id)).filter(Boolean) as Product[];
+}
+
 export async function getRelatedProducts(
   product: Product,
   limit = 4,
 ): Promise<Product[]> {
-  const all = await getProducts({ brand: product.brand?.slug });
-  return all.filter((p) => p.id !== product.id).slice(0, limit);
+  if (!isSupabaseConfigured()) {
+    return DEMO_PRODUCTS.filter(
+      (p) => p.id !== product.id && p.brand_id === product.brand_id,
+    ).slice(0, limit);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "*, brands(*), product_variants(*), product_rating_summary(avg_rating, review_count)",
+    )
+    .eq("is_active", true)
+    .eq("brand_id", product.brand_id)
+    .neq("id", product.id)
+    .order("name")
+    .limit(limit);
+  if (error) {
+    console.error("getRelatedProducts failed", error.message);
+    return [];
+  }
+  return mapProductRows((data ?? []) as ProductRow[]);
 }
 
 export async function getBestSellers(limit = 4): Promise<Product[]> {
   if (!isSupabaseConfigured()) return DEMO_PRODUCTS.slice(0, limit);
 
-  const [products, sales] = await Promise.all([
-    getProducts(),
-    getSalesVolumeMap(),
-  ]);
-  return [...products]
-    .sort((a, b) => (sales.get(b.id) ?? 0) - (sales.get(a.id) ?? 0))
-    .slice(0, limit);
+  const sales = await getSalesVolumeMap();
+  const topIds = [...sales.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  if (topIds.length >= limit) {
+    return getProductsByIds(topIds);
+  }
+
+  const sold = await getProductsByIds(topIds);
+  const soldIds = new Set(sold.map((p) => p.id));
+  const fallback = await getProducts({
+    sort: "newest",
+    limit: limit + soldIds.size,
+  });
+  return [
+    ...sold,
+    ...fallback.filter((p) => !soldIds.has(p.id)),
+  ].slice(0, limit);
 }
 
 /** Units sold from completed (paid+) orders — used for Popular sort / best sellers. */
@@ -508,19 +696,33 @@ export async function getReviewPromptsForUser(
 }
 
 export async function getLimitedStock(limit = 4): Promise<Product[]> {
-  const products = await getProducts();
-  const scored = await Promise.all(
-    products.map(async (p) => {
-      const stock = await getStockSummary(p.id);
-      const score = stock.sealedBottles * 100 + stock.openMl;
-      return { p, score };
-    }),
-  );
-  return scored
-    .filter((s) => s.score > 0 && s.score < 150)
-    .sort((a, b) => a.score - b.score)
+  if (!isSupabaseConfigured()) return DEMO_PRODUCTS.slice(0, limit);
+
+  const supabase = await createClient();
+  const { data: lots, error } = await supabase
+    .from("inventory_lots")
+    .select("product_id, status, remaining_ml")
+    .in("status", ["sealed", "open"])
+    .limit(400);
+  if (error || !lots?.length) {
+    if (error) console.error("getLimitedStock failed", error.message);
+    return [];
+  }
+
+  const scores = new Map<string, number>();
+  for (const lot of lots) {
+    const add =
+      lot.status === "sealed" ? 100 : Number(lot.remaining_ml) || 0;
+    scores.set(lot.product_id, (scores.get(lot.product_id) ?? 0) + add);
+  }
+
+  const limitedIds = [...scores.entries()]
+    .filter(([, score]) => score > 0 && score < 150)
+    .sort((a, b) => a[1] - b[1])
     .slice(0, limit)
-    .map((s) => s.p);
+    .map(([id]) => id);
+
+  return getProductsByIds(limitedIds);
 }
 
 export async function getApprovedReviews(
@@ -624,19 +826,133 @@ export async function getOrderById(id: string): Promise<Order | null> {
   }
 }
 
-export async function getOrdersForUser(userId: string): Promise<Order[]> {
+function mapOrderRows(
+  data: { order_items?: Order["items"] }[],
+): Order[] {
+  return data.map((row) => ({
+    ...(row as Order),
+    items: row.order_items,
+  }));
+}
+
+export async function countOrdersForUser(userId: string): Promise<number> {
+  if (!isSupabaseConfigured()) return 0;
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (error) {
+    console.error("countOrdersForUser failed", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+export async function getOrdersForUser(
+  userId: string,
+  options?: { limit?: number; includeItems?: boolean },
+): Promise<Order[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const columns = options?.includeItems === false ? "*" : "*, order_items(*)";
+  let query = supabase
     .from("orders")
-    .select("*, order_items(*)")
+    .select(columns)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+  if (options?.limit) query = query.limit(options.limit);
+
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error) console.error("getOrdersForUser failed", error.message);
+    return [];
+  }
+  return mapOrderRows(data as { order_items?: Order["items"] }[]);
+}
+
+export async function getOrderPageForUser(
+  userId: string,
+  page = 1,
+  pageSize = PAGE_SIZE.account,
+): Promise<PageResult<Order>> {
+  if (!isSupabaseConfigured()) return emptyPage<Order>(page, pageSize);
+
+  const supabase = await createClient();
+  const { from, to } = pageRange(page, pageSize);
+  const { data, error, count } = await supabase
+    .from("orders")
+    .select("*", { count: "exact" })
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error("getOrderPageForUser failed", error.message);
+    return emptyPage<Order>(page, pageSize);
+  }
+  return pageFromTotal(
+    mapOrderRows((data ?? []) as { order_items?: Order["items"] }[]),
+    count ?? 0,
+    page,
+    pageSize,
+  );
+}
+
+export async function getReturnableOrdersForUser(userId: string) {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, order_number, status")
+    .eq("user_id", userId)
+    .in("status", ["paid", "packing", "shipped", "delivered"])
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    console.error("getReturnableOrdersForUser failed", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export type SitemapEntry = {
+  slug: string;
+  updatedAt?: string;
+};
+
+export async function getProductSitemapEntries(): Promise<SitemapEntry[]> {
+  if (!isSupabaseConfigured()) {
+    return DEMO_PRODUCTS.map((p) => ({ slug: p.slug }));
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug, updated_at")
+    .eq("is_active", true);
 
   if (error || !data) return [];
   return data.map((row) => ({
-    ...(row as Order),
-    items: (row as { order_items: Order["items"] }).order_items,
+    slug: row.slug as string,
+    updatedAt: row.updated_at as string | undefined,
+  }));
+}
+
+export async function getBrandSitemapEntries(): Promise<SitemapEntry[]> {
+  if (!isSupabaseConfigured()) {
+    return DEMO_BRANDS.map((b) => ({ slug: b.slug }));
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("brands")
+    .select("slug, created_at");
+
+  if (error || !data) return [];
+  return data.map((row) => ({
+    slug: row.slug as string,
+    updatedAt: row.created_at as string | undefined,
   }));
 }

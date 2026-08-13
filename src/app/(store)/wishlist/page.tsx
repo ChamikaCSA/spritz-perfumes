@@ -1,11 +1,8 @@
 import { WishlistView } from "@/components/store/wishlist-view";
-import { getProducts } from "@/lib/catalog";
 
 export const metadata = { title: "Wishlist" };
 
-export default async function WishlistPage() {
-  const products = await getProducts();
-
+export default function WishlistPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
       <div className="mb-6 sm:mb-10">
@@ -16,7 +13,7 @@ export default async function WishlistPage() {
           ready.
         </p>
       </div>
-      <WishlistView products={products} />
+      <WishlistView />
     </div>
   );
 }

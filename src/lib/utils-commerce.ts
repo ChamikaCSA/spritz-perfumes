@@ -62,6 +62,22 @@ export function lowestPrice(variants: ProductVariant[] = []) {
   return Math.min(...variants.map((v) => Number(v.price_lkr)));
 }
 
+export function lowestPricedVariant(variants: ProductVariant[] = []) {
+  if (!variants.length) return undefined;
+  return variants.reduce((best, variant) =>
+    Number(variant.price_lkr) < Number(best.price_lkr) ? variant : best,
+  );
+}
+
+export function saleCompareAt(
+  price: number,
+  compareAt?: number | null,
+) {
+  const compare = Number(compareAt);
+  if (!Number.isFinite(compare) || compare <= Number(price)) return null;
+  return compare;
+}
+
 export function getDemoProductBySlug(slug: string): Product | undefined {
   return DEMO_PRODUCTS.find((p) => p.slug === slug);
 }

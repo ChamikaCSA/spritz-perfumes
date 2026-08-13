@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { useCart } from "@/lib/cart-store";
 import type { Product, ProductVariant, StockSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatLkr, formatMl } from "@/lib/utils-commerce";
+import { StorePrice } from "@/components/store/store-price";
+import { formatMl } from "@/lib/utils-commerce";
 
 function isPurchasable(v: ProductVariant, stock: StockSummary) {
   if (v.purchasable === false) return false;
@@ -158,7 +159,14 @@ export function VariantPicker({
             exit={{ opacity: 0, y: -4 }}
             className="font-display text-3xl text-amber sm:text-4xl"
           >
-            {selected ? formatLkr(Number(selected.price_lkr)) : "—"}
+            {selected ? (
+              <StorePrice
+                price={Number(selected.price_lkr)}
+                compareAt={selected.compare_at_price_lkr}
+              />
+            ) : (
+              "—"
+            )}
           </motion.p>
         </AnimatePresence>
         <p className="mt-1 text-xs text-muted-foreground">

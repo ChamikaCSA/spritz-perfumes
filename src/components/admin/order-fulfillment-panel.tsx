@@ -77,7 +77,7 @@ export function OrderFulfillmentPanel({
                 <input
                   name="tracking_number"
                   defaultValue={trackingNumber ?? ""}
-                  placeholder="Optional"
+                  placeholder="e.g. EMS123"
                   className={adminFieldClass}
                 />
               </AdminField>

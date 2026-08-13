@@ -2,6 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  MAX_CATALOG_CSV_BYTES,
+  parseCatalogCsv,
+  parseVariantPackJson,
+  type CatalogImportResult,
+} from "@/lib/catalog-import";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
@@ -61,16 +67,23 @@ async function uniqueSlug(
   table: "products" | "brands",
   name: string,
   excludeId?: string,
+  reserved?: Set<string>,
 ) {
   const base = slugFromName(name, table === "brands" ? "brand" : "product");
   for (let n = 0; n < 50; n++) {
     const candidate = n === 0 ? base : `${base}-${n + 1}`;
+    if (reserved?.has(candidate)) continue;
     let query = service.from(table).select("id").eq("slug", candidate);
     if (excludeId) query = query.neq("id", excludeId);
     const { data } = await query.maybeSingle();
-    if (!data) return candidate;
+    if (!data) {
+      reserved?.add(candidate);
+      return candidate;
+    }
   }
-  return `${base}-${Date.now().toString(36)}`;
+  const fallback = `${base}-${Date.now().toString(36)}`;
+  reserved?.add(fallback);
+  return fallback;
 }
 
 function splitList(value: FormDataEntryValue | null) {
@@ -84,15 +97,23 @@ async function uniqueVariantSku(
   service: SupabaseClient,
   base: string,
   excludeId?: string,
+  reserved?: Set<string>,
 ) {
   for (let n = 0; n < 50; n++) {
     const candidate = n === 0 ? base : `${base}-${n + 1}`;
+    const key = candidate.toLowerCase();
+    if (reserved?.has(key)) continue;
     let query = service.from("product_variants").select("id").eq("sku", candidate);
     if (excludeId) query = query.neq("id", excludeId);
     const { data } = await query.maybeSingle();
-    if (!data) return candidate;
+    if (!data) {
+      reserved?.add(key);
+      return candidate;
+    }
   }
-  return `${base}-${Date.now().toString(36).slice(-4)}`;
+  const fallback = `${base}-${Date.now().toString(36).slice(-4)}`;
+  reserved?.add(fallback.toLowerCase());
+  return fallback;
 }
 
 type BrandRef = { name: string; slug: string };
@@ -111,6 +132,7 @@ async function resolveVariantSku(
     type: string;
     sizeMl: number;
     variantId?: string;
+    reserved?: Set<string>;
   },
 ) {
   const { data: product, error } = await service
@@ -142,11 +164,77 @@ async function resolveVariantSku(
       !existing ||
       existing.type !== input.type ||
       Number(existing.size_ml) !== input.sizeMl;
-    if (!identityChanged && existing?.sku) return existing.sku;
-    return uniqueVariantSku(service, base, input.variantId);
+    if (!identityChanged && existing?.sku) {
+      input.reserved?.add(existing.sku.toLowerCase());
+      return existing.sku;
+    }
+    return uniqueVariantSku(service, base, input.variantId, input.reserved);
   }
 
-  return uniqueVariantSku(service, base);
+  return uniqueVariantSku(service, base, undefined, input.reserved);
+}
+
+type VariantWrite = {
+  productId: string;
+  type: string;
+  sizeMl: number;
+  priceLkr: number;
+  compareAt?: number | null;
+  compareAtProvided?: boolean;
+  sku?: string | null;
+  isActive?: boolean;
+  variantId?: string;
+};
+
+async function writeVariant(
+  service: SupabaseClient,
+  input: VariantWrite,
+  reservedSkus?: Set<string>,
+) {
+  const sku = input.sku?.trim()
+    ? await uniqueVariantSku(
+        service,
+        input.sku.trim(),
+        input.variantId,
+        reservedSkus,
+      )
+    : await resolveVariantSku(service, {
+        productId: input.productId,
+        type: input.type,
+        sizeMl: input.sizeMl,
+        variantId: input.variantId,
+        reserved: reservedSkus,
+      });
+
+  const payload: Record<string, unknown> = {
+    product_id: input.productId,
+    type: input.type,
+    size_ml: input.sizeMl,
+    price_lkr: input.priceLkr,
+    sku,
+  };
+  if (!input.variantId || input.compareAtProvided) {
+    payload.compare_at_price_lkr = input.compareAt ?? null;
+  }
+  if (input.isActive !== undefined) payload.is_active = input.isActive;
+  else if (!input.variantId) payload.is_active = true;
+
+  if (input.variantId) {
+    const { error } = await service
+      .from("product_variants")
+      .update(payload)
+      .eq("id", input.variantId);
+    if (error) throw new Error(error.message);
+    return { id: input.variantId, sku, created: false };
+  }
+
+  const { data, error } = await service
+    .from("product_variants")
+    .insert(payload)
+    .select("id, sku")
+    .single();
+  if (error) throw new Error(error.message);
+  return { id: data.id, sku: data.sku, created: true };
 }
 
 async function uploadToBucket(
@@ -213,6 +301,7 @@ function productPayload(formData: FormData, images: string[], slug: string) {
     year_released: year ? Number(year) : null,
     perfumers: splitList(formData.get("perfumers")),
     collection: String(formData.get("collection") || "core"),
+    inspired_by: String(formData.get("inspired_by") || "").trim() || null,
   };
 }
 
@@ -249,6 +338,7 @@ export async function upsertProduct(formData: FormData) {
   const images = id ? [...kept, ...uploaded] : uploaded.length ? uploaded : kept;
 
   const payload = productPayload(formData, images, slug);
+  const pack = parseVariantPackJson(String(formData.get("variant_pack") || ""));
 
   if (id) {
     const notesEmpty =
@@ -265,9 +355,15 @@ export async function upsertProduct(formData: FormData) {
     }
     const { error } = await service.from("products").update(payload).eq("id", id);
     if (error) throw new Error(error.message);
+    await syncProductVariants(service, id, pack);
   } else {
-    const { error } = await service.from("products").insert(payload);
+    const { data, error } = await service
+      .from("products")
+      .insert(payload)
+      .select("id")
+      .single();
     if (error) throw new Error(error.message);
+    await syncProductVariants(service, data.id, pack);
   }
 
   revalidateCatalog();
@@ -289,25 +385,69 @@ export async function deleteProduct(formData: FormData) {
   revalidateCatalog();
 }
 
-export async function deleteVariant(formData: FormData) {
-  const { service } = await requireAdmin();
-  const id = String(formData.get("id"));
-  const { error } = await service.from("product_variants").delete().eq("id", id);
+async function syncProductVariants(
+  service: SupabaseClient,
+  productId: string,
+  pack: ReturnType<typeof parseVariantPackJson>,
+) {
+  const { data: existing, error } = await service
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", productId);
   if (error) throw new Error(error.message);
-  revalidateCatalog();
+
+  const keepIds = new Set(
+    pack.map((variant) => variant.id).filter((id): id is string => Boolean(id)),
+  );
+  const removed = (existing ?? []).filter((variant) => !keepIds.has(variant.id));
+  if (removed.length) {
+    const { error: deleteError } = await service
+      .from("product_variants")
+      .delete()
+      .in(
+        "id",
+        removed.map((variant) => variant.id),
+      );
+    if (deleteError) throw new Error(deleteError.message);
+  }
+
+  for (const variant of pack) {
+    await writeVariant(service, {
+      productId,
+      type: variant.type,
+      sizeMl: variant.size_ml,
+      priceLkr: variant.price_lkr,
+      compareAt: variant.compare_at_price_lkr ?? null,
+      compareAtProvided: true,
+      isActive: variant.id ? undefined : (variant.is_active ?? true),
+      variantId: variant.id,
+    });
+  }
 }
 
 export async function deleteBrand(formData: FormData) {
   const { service } = await requireAdmin();
   const id = String(formData.get("id"));
 
-  const { count, error: countError } = await service
+  const { data: products, error: productsError } = await service
     .from("products")
-    .select("id", { count: "exact", head: true })
+    .select("id")
     .eq("brand_id", id);
-  if (countError) throw new Error(countError.message);
-  if (count && count > 0) {
-    throw new Error("Remove all products for this brand before deleting it.");
+  if (productsError) throw new Error(productsError.message);
+
+  const productIds = (products ?? []).map((product) => product.id);
+  if (productIds.length) {
+    const { error: lotsError } = await service
+      .from("inventory_lots")
+      .delete()
+      .in("product_id", productIds);
+    if (lotsError) throw new Error(lotsError.message);
+
+    const { error: deleteProductsError } = await service
+      .from("products")
+      .delete()
+      .in("id", productIds);
+    if (deleteProductsError) throw new Error(deleteProductsError.message);
   }
 
   const { error } = await service.from("brands").delete().eq("id", id);
@@ -347,6 +487,7 @@ export async function duplicateProduct(formData: FormData) {
       year_released: product.year_released,
       perfumers: product.perfumers,
       collection: product.collection,
+      inspired_by: product.inspired_by,
     })
     .select("id")
     .single();
@@ -429,42 +570,227 @@ export async function appendProductImages(formData: FormData) {
   revalidatePath(`/product/${slug}`);
 }
 
-export async function upsertVariant(formData: FormData) {
+export async function importCatalogCsv(
+  formData: FormData,
+): Promise<CatalogImportResult> {
   const { service } = await requireAdmin();
-  const id = String(formData.get("id") || "");
-  const compare = String(formData.get("compare_at_price_lkr") || "");
-  const productId = String(formData.get("product_id"));
-  const type = String(formData.get("type"));
-  const sizeMl = Number(formData.get("size_ml"));
-  const sku = await resolveVariantSku(service, {
-    productId,
-    type,
-    sizeMl,
-    variantId: id || undefined,
-  });
-  const payload = {
-    product_id: productId,
-    type,
-    size_ml: sizeMl,
-    price_lkr: Number(formData.get("price_lkr")),
-    compare_at_price_lkr: compare ? Number(compare) : null,
-    sku,
-    is_active: formData.get("is_active") === "on",
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Choose a CSV file");
+  }
+  if (file.size > MAX_CATALOG_CSV_BYTES) {
+    throw new Error("CSV is larger than 2MB");
+  }
+
+  let parsed;
+  try {
+    parsed = parseCatalogCsv(await file.text());
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : "Could not parse CSV");
+  }
+
+  const errors = [...parsed.errors];
+  const result: CatalogImportResult = {
+    createdBrands: 0,
+    updatedProducts: 0,
+    createdProducts: 0,
+    createdVariants: 0,
+    updatedVariants: 0,
+    errors,
   };
 
-  if (id) {
-    const { error } = await service
-      .from("product_variants")
-      .update(payload)
-      .eq("id", id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await service.from("product_variants").insert(payload);
-    if (error) throw new Error(error.message);
+  if (!parsed.rows.length) return result;
+
+  const [{ data: brands }, { data: products }, { data: variants }] =
+    await Promise.all([
+      service.from("brands").select("id, name, slug"),
+      service.from("products").select("id, brand_id, name, slug"),
+      service.from("product_variants").select("id, product_id, type, size_ml, sku"),
+    ]);
+
+  const brandByName = new Map<
+    string,
+    { id: string; name: string; slug: string }
+  >();
+  const reservedBrandSlugs = new Set<string>();
+  for (const brand of brands ?? []) {
+    brandByName.set(brand.name.trim().toLowerCase(), brand);
+    reservedBrandSlugs.add(brand.slug);
+  }
+
+  type ProductCache = {
+    id: string;
+    brand_id: string;
+    name: string;
+    slug: string;
+    applied: boolean;
+  };
+  const productByKey = new Map<string, ProductCache>();
+  const reservedProductSlugs = new Set<string>();
+  for (const product of products ?? []) {
+    productByKey.set(`${product.brand_id}::${product.name.trim().toLowerCase()}`, {
+      ...product,
+      applied: false,
+    });
+    reservedProductSlugs.add(product.slug);
+  }
+
+  const variantByKey = new Map<string, { id: string; sku: string }>();
+  const reservedSkus = new Set<string>();
+  for (const variant of variants ?? []) {
+    variantByKey.set(
+      `${variant.product_id}:${variant.type}:${Number(variant.size_ml)}`,
+      { id: variant.id, sku: variant.sku },
+    );
+    reservedSkus.add(variant.sku.toLowerCase());
+  }
+
+  for (const row of parsed.rows) {
+    try {
+      const brandKey = row.brand.trim().toLowerCase();
+      let brand = brandByName.get(brandKey);
+      if (!brand) {
+        const slug = await uniqueSlug(
+          service,
+          "brands",
+          row.brand.trim(),
+          undefined,
+          reservedBrandSlugs,
+        );
+        const { data, error } = await service
+          .from("brands")
+          .insert({ name: row.brand.trim(), slug })
+          .select("id, name, slug")
+          .single();
+        if (error) throw new Error(error.message);
+        brand = data;
+        brandByName.set(brandKey, brand);
+        result.createdBrands += 1;
+      }
+
+      const productKey = `${brand.id}::${row.name.trim().toLowerCase()}`;
+      let product = productByKey.get(productKey);
+
+      if (!product) {
+        const slug = await uniqueSlug(
+          service,
+          "products",
+          row.name.trim(),
+          undefined,
+          reservedProductSlugs,
+        );
+        const payload = {
+          brand_id: brand.id,
+          name: row.name.trim(),
+          slug,
+          concentration: row.concentration,
+          description: row.description || "",
+          notes: {
+            top: row.notesTop,
+            heart: row.notesHeart,
+            base: row.notesBase,
+          },
+          images: [] as string[],
+          is_active: row.isActive,
+          gender: row.gender,
+          longevity: row.longevity || null,
+          projection: row.projection || null,
+          season: row.season || null,
+          occasion: row.occasion || null,
+          country_of_origin: row.countryOfOrigin || null,
+          year_released: row.yearReleased,
+          perfumers: row.perfumers,
+          collection: row.collection,
+          inspired_by: row.inspiredBy || null,
+        };
+        const { data, error } = await service
+          .from("products")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        product = {
+          id: data.id,
+          brand_id: brand.id,
+          name: row.name.trim(),
+          slug,
+          applied: true,
+        };
+        productByKey.set(productKey, product);
+        result.createdProducts += 1;
+      } else if (!product.applied) {
+        const update: Record<string, unknown> = {};
+        if (row.concentrationProvided) update.concentration = row.concentration;
+        if (row.description) update.description = row.description;
+        if (row.genderProvided) update.gender = row.gender;
+        if (row.collectionProvided) update.collection = row.collection;
+        if (row.notesProvided) {
+          update.notes = {
+            top: row.notesTop,
+            heart: row.notesHeart,
+            base: row.notesBase,
+          };
+        }
+        if (row.perfumersProvided) update.perfumers = row.perfumers;
+        if (row.longevity) update.longevity = row.longevity;
+        if (row.projection) update.projection = row.projection;
+        if (row.season) update.season = row.season;
+        if (row.occasion) update.occasion = row.occasion;
+        if (row.countryOfOrigin) update.country_of_origin = row.countryOfOrigin;
+        if (row.yearProvided) update.year_released = row.yearReleased;
+        if (row.inspiredByProvided) update.inspired_by = row.inspiredBy || null;
+        if (row.isActiveProvided) update.is_active = row.isActive;
+
+        if (Object.keys(update).length) {
+          const { error } = await service
+            .from("products")
+            .update(update)
+            .eq("id", product.id);
+          if (error) throw new Error(error.message);
+          result.updatedProducts += 1;
+        }
+        product.applied = true;
+        productByKey.set(productKey, product);
+      }
+
+      if (!row.hasVariant) continue;
+      if (!row.type || row.sizeMl == null || row.priceLkr == null) {
+        errors.push({
+          row: row.rowNumber,
+          message: "Variant is missing type, size, or price",
+        });
+        continue;
+      }
+
+      const variantKey = `${product.id}:${row.type}:${Number(row.sizeMl)}`;
+      const existingVariant = variantByKey.get(variantKey);
+      const written = await writeVariant(
+        service,
+        {
+          productId: product.id,
+          type: row.type,
+          sizeMl: row.sizeMl,
+          priceLkr: row.priceLkr,
+          compareAt: row.compareAt,
+          compareAtProvided: row.compareProvided,
+          isActive: existingVariant ? undefined : true,
+          variantId: existingVariant?.id,
+        },
+        reservedSkus,
+      );
+      variantByKey.set(variantKey, { id: written.id, sku: written.sku });
+      if (written.created) result.createdVariants += 1;
+      else result.updatedVariants += 1;
+    } catch (err) {
+      errors.push({
+        row: row.rowNumber,
+        message: err instanceof Error ? err.message : "Could not import row",
+      });
+    }
   }
 
   revalidateCatalog();
-  revalidatePath(`/admin/products`);
+  return result;
 }
 
 export async function receiveInventory(formData: FormData) {
@@ -527,6 +853,45 @@ export async function openLot(lotId: string) {
   revalidatePath("/admin/inventory");
 }
 
+export async function resealLot(lotId: string) {
+  const { service } = await requireAdmin();
+  const { data: lot, error: fetchError } = await service
+    .from("inventory_lots")
+    .select("id, product_id, status, fill_ml, remaining_ml")
+    .eq("id", lotId)
+    .single();
+  if (fetchError || !lot) throw new Error(fetchError?.message ?? "Lot not found");
+  if (lot.status !== "open") throw new Error("Only open lots can be resealed");
+  if (Number(lot.remaining_ml) !== Number(lot.fill_ml)) {
+    throw new Error("Can't reseal after juice has been used");
+  }
+
+  const { error } = await service
+    .from("inventory_lots")
+    .update({
+      status: "sealed",
+      remaining_ml: lot.fill_ml,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", lotId)
+    .eq("status", "open");
+  if (error) throw new Error(error.message);
+
+  const { data: openEvent } = await service
+    .from("inventory_events")
+    .select("id")
+    .eq("lot_id", lotId)
+    .eq("kind", "open")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (openEvent) {
+    await service.from("inventory_events").delete().eq("id", openEvent.id);
+  }
+
+  revalidatePath("/admin/inventory");
+}
+
 export async function adjustInventory(formData: FormData) {
   const { service, userId } = await requireAdmin();
   const lotId = String(formData.get("lot_id"));
@@ -540,10 +905,12 @@ export async function adjustInventory(formData: FormData) {
     .eq("id", lotId)
     .single();
   if (fetchError || !lot) throw new Error(fetchError?.message ?? "Lot not found");
+  if (lot.status !== "open") {
+    throw new Error("Only open lots can be adjusted");
+  }
 
   const next = Math.max(0, Number(lot.remaining_ml) + delta);
-  const status =
-    next <= 0 ? "depleted" : lot.status === "sealed" ? "sealed" : "open";
+  const status = next <= 0 ? "depleted" : "open";
 
   const { error } = await service
     .from("inventory_lots")

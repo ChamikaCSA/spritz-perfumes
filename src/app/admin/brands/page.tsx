@@ -17,12 +17,18 @@ import {
   AdminPanel,
   adminButtonClass,
 } from "@/components/admin/admin-shell";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
 
 export const metadata = { title: "Brands · Admin" };
 
-export default async function AdminBrandsPage() {
+export default async function AdminBrandsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <div>
@@ -34,11 +40,16 @@ export default async function AdminBrandsPage() {
     );
   }
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const { from, to } = pageRange(page, PAGE_SIZE.admin);
   const supabase = await createClient();
-  const { data: brands } = await supabase
+  const { data: brands, count } = await supabase
     .from("brands")
-    .select("*")
-    .order("name");
+    .select("*", { count: "exact" })
+    .order("name")
+    .range(from, to);
+  const result = pageFromTotal(brands ?? [], count ?? 0, page, PAGE_SIZE.admin);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -55,7 +66,7 @@ export default async function AdminBrandsPage() {
             <AdminForm action={upsertBrand} bare>
               <AdminFormSection>
                 <AdminFieldGrid>
-                  <AdminField label="Name">
+                  <AdminField label="Name" required>
                     <input
                       name="name"
                       required
@@ -112,9 +123,9 @@ export default async function AdminBrandsPage() {
       />
 
       <AdminPanel>
-        {(brands ?? []).length ? (
-          <ul className="divide-y divide-border/50">
-            {(brands ?? []).map((brand) => (
+        {result.items.length ? (
+          <ul id="results" className="scroll-mt-20 divide-y divide-border/50">
+            {result.items.map((brand) => (
               <li
                 key={brand.id}
                 className="flex items-center gap-2 px-0 py-2 sm:gap-3 sm:py-2.5"
@@ -147,11 +158,12 @@ export default async function AdminBrandsPage() {
                   size="lg"
                   triggerVariant="link"
                 >
+                  <div className="space-y-6">
                   <AdminForm action={upsertBrand} bare>
                     <input type="hidden" name="id" value={brand.id} />
                     <AdminFormSection>
                       <AdminFieldGrid>
-                        <AdminField label="Name">
+                        <AdminField label="Name" required>
                           <input
                             name="name"
                             defaultValue={brand.name}
@@ -203,15 +215,15 @@ export default async function AdminBrandsPage() {
                     <button type="submit" className={adminButtonClass}>
                       Update brand
                     </button>
-                    <div className="border-t border-border/40 pt-5">
-                      <AdminDeleteForm
-                        action={deleteBrand}
-                        id={brand.id}
-                        label="Delete brand"
-                        confirmMessage={`Delete "${brand.name}"? You must remove all of its products first.`}
-                      />
-                    </div>
                   </AdminForm>
+                  <AdminDeleteForm
+                    action={deleteBrand}
+                    id={brand.id}
+                    label="Delete brand"
+                    name={brand.name}
+                    description="Products and inventory go with it."
+                  />
+                  </div>
                 </AdminFormDialog>
               </li>
             ))}
@@ -219,6 +231,14 @@ export default async function AdminBrandsPage() {
         ) : (
           <AdminEmpty>No brands yet</AdminEmpty>
         )}
+        <PaginationNav
+          page={result.page}
+          pageCount={result.pageCount}
+          total={result.total}
+          pageSize={result.pageSize}
+          pathname="/admin/brands"
+          compact
+        />
       </AdminPanel>
     </div>
   );

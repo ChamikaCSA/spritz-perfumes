@@ -84,6 +84,7 @@ export type Product = {
   year_released?: number | null;
   perfumers?: string[];
   collection?: ProductCollection;
+  inspired_by?: string | null;
   brand?: Brand;
   variants?: ProductVariant[];
   avg_rating?: number | null;

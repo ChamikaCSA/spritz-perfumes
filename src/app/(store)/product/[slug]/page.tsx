@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/json-ld";
 import { ProductCard } from "@/components/store/product-card";
 import { ProductGallery } from "@/components/store/product-gallery";
 import { ProductReviews } from "@/components/store/product-reviews";
@@ -13,6 +14,7 @@ import {
   getRelatedProducts,
   getStockSummary,
 } from "@/lib/catalog";
+import { breadcrumbJsonLd, buildMetadata, productJsonLd } from "@/lib/seo";
 
 type Params = Promise<{ slug: string }>;
 type SearchParams = Promise<{ type?: string }>;
@@ -21,10 +23,18 @@ export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Product" };
-  return {
+
+  const inspired = product.inspired_by?.trim();
+  const description =
+    product.description ??
+    `${product.name}${inspired ? ` — inspired by ${inspired}` : ` — authentic ${product.brand?.name ?? "luxury"} fragrance`} with full bottles and decants, delivered across Sri Lanka.`;
+
+  return buildMetadata({
     title: product.name,
-    description: product.description ?? undefined,
-  };
+    description,
+    path: `/product/${product.slug}`,
+    image: product.images?.[0],
+  });
 }
 
 export default async function ProductPage({
@@ -78,6 +88,11 @@ export default async function ProductPage({
       label: "Perfumer",
       value: product.perfumers.join(", "),
     });
+  if (product.inspired_by?.trim())
+    metaRows.push({
+      label: "Inspired by",
+      value: product.inspired_by.trim(),
+    });
 
   const rating =
     product.avg_rating != null ? Number(product.avg_rating) : null;
@@ -87,15 +102,48 @@ export default async function ProductPage({
       (product.notes?.base?.length ?? 0) >
     0;
 
+  const breadcrumbs = [
+    { name: "Shop", path: "/shop" },
+    ...(product.brand
+      ? [{ name: product.brand.name, path: `/brands/${product.brand.slug}` }]
+      : []),
+    { name: product.name, path: `/product/${product.slug}` },
+  ];
+
   return (
     <div className="pb-14 sm:pb-20 lg:pb-24">
-      <div className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-32">
-        <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-16">
-          <div className="lg:sticky lg:top-24">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(breadcrumbs),
+          productJsonLd(product, stock, reviews),
+        ]}
+      />
+      <div className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-28">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-6 text-xs uppercase tracking-[0.16em] text-muted-foreground lg:mb-4"
+        >
+          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {breadcrumbs.map((crumb, index) => (
+              <li key={crumb.path} className="flex items-center gap-2">
+                {index > 0 ? <span aria-hidden>·</span> : null}
+                {index < breadcrumbs.length - 1 ? (
+                  <Link href={crumb.path} className="hover:text-amber">
+                    {crumb.name}
+                  </Link>
+                ) : (
+                  <span className="text-foreground">{crumb.name}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-12">
+          <div className="lg:sticky lg:top-24 lg:max-h-[calc(100svh-7rem)]">
             <ProductGallery images={product.images} alt={product.name} />
           </div>
 
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 flex-col lg:min-h-0">
             <div>
               {product.brand ? (
                 <Link
@@ -109,7 +157,7 @@ export default async function ProductPage({
                   Fragrance
                 </p>
               )}
-              <h1 className="mt-1.5 font-display text-3xl leading-[1.05] sm:mt-2 sm:text-5xl lg:text-6xl">
+              <h1 className="mt-1.5 font-display text-3xl leading-[1.05] sm:mt-2 sm:text-5xl lg:text-5xl xl:text-6xl">
                 {product.name}
               </h1>
               <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -136,12 +184,12 @@ export default async function ProductPage({
             </div>
 
             {product.description ? (
-              <p className="mt-5 max-w-prose text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base">
+              <p className="mt-5 max-w-prose text-sm leading-relaxed text-muted-foreground sm:mt-6 lg:mt-4 sm:text-base">
                 {product.description}
               </p>
             ) : null}
 
-            <div className="mt-6 sm:mt-8">
+            <div className="mt-6 sm:mt-8 lg:mt-5">
               <VariantPicker
                 product={product}
                 stock={stock}

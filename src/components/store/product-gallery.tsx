@@ -37,7 +37,7 @@ export function ProductGallery({
 
   return (
     <div
-      className="group relative aspect-square select-none overflow-hidden bg-background mist-glow sm:aspect-4/5"
+      className="group relative aspect-square select-none overflow-hidden bg-background mist-glow sm:aspect-4/5 lg:max-h-[calc(100svh-11rem)]"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >

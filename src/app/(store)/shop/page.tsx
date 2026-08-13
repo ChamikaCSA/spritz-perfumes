@@ -1,7 +1,18 @@
 import Link from "next/link";
-import { ProductCard } from "@/components/store/product-card";
+import { cookies } from "next/headers";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import {
+  CatalogProductResults,
+  CatalogStyleProvider,
+} from "@/components/store/catalog-style";
 import { ShopToolbar } from "@/components/store/shop-toolbar";
-import { getProducts } from "@/lib/catalog";
+import { getProductPage } from "@/lib/catalog";
+import {
+  CATALOG_STYLE_COOKIE,
+  parseCatalogStyle,
+} from "@/lib/catalog-style";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import { buildMetadata } from "@/lib/seo";
 import type { ProductGender, ProductSort, ProductSortOrder } from "@/lib/types";
 import { defaultSortOrder } from "@/lib/types";
 
@@ -18,9 +29,15 @@ type SearchParams = Promise<{
   available?: string;
   sort?: string;
   order?: string;
+  page?: string;
 }>;
 
-export const metadata = { title: "Shop" };
+export const metadata = buildMetadata({
+  title: "Shop",
+  description:
+    "Browse luxury fragrances, decants, and full bottles from the world's finest houses. Filter by brand, note, and size — delivered across Sri Lanka.",
+  path: "/shop",
+});
 
 const SORT_VALUES: ProductSort[] = [
   "name",
@@ -58,8 +75,12 @@ export default async function ShopPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const catalogStyle = parseCatalogStyle(
+    (await cookies()).get(CATALOG_STYLE_COOKIE)?.value,
+  );
   const { sort, order } = parseSortParams(params);
-  const products = await getProducts({
+  const page = parsePage(params.page);
+  const result = await getProductPage({
     brand: params.brand,
     concentration: params.concentration,
     type: params.type,
@@ -72,7 +93,25 @@ export default async function ShopPage({
     available: params.available,
     sort,
     order,
+    page,
+    pageSize: PAGE_SIZE.shop,
   });
+
+  const query = {
+    brand: params.brand,
+    concentration: params.concentration,
+    type: params.type,
+    q: params.q,
+    gender: params.gender,
+    note: params.note,
+    size_ml: params.size_ml,
+    min_price: params.min_price,
+    max_price: params.max_price,
+    available: params.available,
+    sort: sort && sort !== "name" ? sort : undefined,
+    order:
+      order && order !== defaultSortOrder(sort ?? "name") ? order : undefined,
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
@@ -88,37 +127,39 @@ export default async function ShopPage({
         </p>
       </div>
 
-      <ShopToolbar
-        params={{
-          ...params,
-          sort: sort && sort !== "name" ? sort : undefined,
-          order:
-            order && order !== defaultSortOrder(sort ?? "name")
-              ? order
-              : undefined,
-        }}
-        resultCount={products.length}
-      />
+      <CatalogStyleProvider initialStyle={catalogStyle}>
+        <ShopToolbar
+          params={query}
+          resultCount={result.total}
+          page={result.page}
+          pageSize={result.pageSize}
+        />
 
-      {products.length === 0 ? (
-        <p className="py-16 text-center text-muted-foreground">
-          No fragrances match these filters.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
+        {result.items.length === 0 ? (
+          <p className="py-16 text-center text-muted-foreground">
+            No fragrances match these filters.
+          </p>
+        ) : (
+          <>
+            <CatalogProductResults
+              products={result.items}
               preferType={
                 params.type === "full_size" || params.type === "decant"
                   ? params.type
                   : undefined
               }
             />
-          ))}
-        </div>
-      )}
+            <PaginationNav
+              page={result.page}
+              pageCount={result.pageCount}
+              total={result.total}
+              pageSize={result.pageSize}
+              pathname="/shop"
+              query={query}
+            />
+          </>
+        )}
+      </CatalogStyleProvider>
     </div>
   );
 }

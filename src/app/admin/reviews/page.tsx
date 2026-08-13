@@ -7,6 +7,8 @@ import {
   adminRowActionPrimaryClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus } from "@/components/admin/admin-status";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
 
@@ -34,7 +36,11 @@ function excerpt(text: string | null, max = 120) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-export default async function AdminReviewsPage() {
+export default async function AdminReviewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <div>
@@ -46,16 +52,40 @@ export default async function AdminReviewsPage() {
     );
   }
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const { from, to } = pageRange(page, PAGE_SIZE.admin);
   const supabase = await createClient();
-  const { data: reviews } = await supabase
-    .from("reviews")
-    .select(
-      "id, user_id, rating, title, body, is_approved, created_at, products(name)",
-    )
-    .order("created_at", { ascending: false });
+  const [{ data: pendingRows }, { data: publishedRows, count: publishedCount }] =
+    await Promise.all([
+      supabase
+        .from("reviews")
+        .select(
+          "id, user_id, rating, title, body, is_approved, created_at, products(name)",
+        )
+        .eq("is_approved", false)
+        .order("created_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("reviews")
+        .select(
+          "id, user_id, rating, title, body, is_approved, created_at, products(name)",
+          { count: "exact" },
+        )
+        .eq("is_approved", true)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    ]);
 
-  const rows = (reviews ?? []) as unknown as ReviewRow[];
-  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const pending = (pendingRows ?? []) as unknown as ReviewRow[];
+  const publishedResult = pageFromTotal(
+    (publishedRows ?? []) as unknown as ReviewRow[],
+    publishedCount ?? 0,
+    page,
+    PAGE_SIZE.admin,
+  );
+  const published = publishedResult.items;
+  const userIds = [...new Set([...pending, ...published].map((r) => r.user_id))];
   const { data: profiles } = userIds.length
     ? await supabase
         .from("profiles")
@@ -66,9 +96,6 @@ export default async function AdminReviewsPage() {
   const profileMap = new Map(
     (profiles ?? []).map((p) => [p.id, p] as const),
   );
-
-  const pending = rows.filter((r) => !r.is_approved);
-  const published = rows.filter((r) => r.is_approved);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -87,19 +114,33 @@ export default async function AdminReviewsPage() {
 
       <AdminPanel title="Published">
         {published.length ? (
-          <ReviewList reviews={published} profileMap={profileMap} />
+          <ReviewList
+            id="results"
+            reviews={published}
+            profileMap={profileMap}
+          />
         ) : (
           <AdminEmpty>No published reviews</AdminEmpty>
         )}
+        <PaginationNav
+          page={publishedResult.page}
+          pageCount={publishedResult.pageCount}
+          total={publishedResult.total}
+          pageSize={publishedResult.pageSize}
+          pathname="/admin/reviews"
+          compact
+        />
       </AdminPanel>
     </div>
   );
 }
 
 function ReviewList({
+  id,
   reviews,
   profileMap,
 }: {
+  id?: string;
   reviews: ReviewRow[];
   profileMap: Map<
     string,
@@ -107,7 +148,7 @@ function ReviewList({
   >;
 }) {
   return (
-    <ul className="divide-y divide-border/50">
+    <ul id={id} className="scroll-mt-20 divide-y divide-border/50">
       {reviews.map((review) => {
         const profile = profileMap.get(review.user_id);
         const author = profile?.full_name || profile?.email || "User";

@@ -162,15 +162,11 @@ export function HomeHero() {
         Decant · Bottle · Done
       </p>
 
-      <motion.div
-        style={
-          reduceMotion
-            ? undefined
-            : { y: contentY }
-        }
-        className="relative z-10 flex min-h-svh flex-col justify-end px-4 pb-14 pt-28 sm:px-6 sm:pb-20 lg:justify-center lg:px-8 lg:pb-24 lg:pt-32"
-      >
+      <div className="relative z-10 flex min-h-svh flex-col justify-between gap-10 px-4 pb-14 pt-28 sm:gap-12 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24 lg:pt-36">
         <div className="mx-auto w-full max-w-7xl lg:pl-10 xl:pl-14">
+          <p className="mb-4 text-[10px] uppercase tracking-[0.28em] text-muted-foreground/70 sm:tracking-[0.35em] lg:hidden">
+            Decant · Bottle · Done
+          </p>
           <div
             className="hero-anim-line mb-6 h-px w-16 bg-amber sm:mb-8 sm:w-24"
             aria-hidden
@@ -180,6 +176,7 @@ export function HomeHero() {
             id="home-hero-heading"
             className="max-w-[12ch] font-display text-[clamp(3rem,11vw,6.5rem)] leading-[0.9] tracking-tight text-foreground"
           >
+            <span className="sr-only">Luxury perfume decants in Sri Lanka — </span>
             {lines.map((line, i) => (
               <span key={line} className="block overflow-hidden">
                 <span
@@ -191,9 +188,14 @@ export function HomeHero() {
               </span>
             ))}
           </h1>
+        </div>
 
+        <motion.div
+          style={reduceMotion ? undefined : { y: contentY }}
+          className="mx-auto w-full max-w-7xl lg:pl-10 xl:pl-14"
+        >
           <p
-            className="hero-anim-fade mt-6 max-w-md text-sm leading-relaxed text-muted-foreground sm:mt-8 sm:text-base"
+            className="hero-anim-fade max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg"
             style={{ animationDelay: "0.85s" }}
           >
             Iconic maisons, sealed full bottles, and decants sized to try.
@@ -221,8 +223,8 @@ export function HomeHero() {
               </span>
             </Link>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </section>
   );
 }

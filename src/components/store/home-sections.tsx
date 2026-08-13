@@ -8,11 +8,11 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { homeEase, homeViewport } from "@/components/store/home-motion";
+import { HomeProductTile } from "@/components/store/home-product-tile";
 import type { Brand, Product } from "@/lib/types";
-import { ProductCard } from "@/components/store/product-card";
 
 export function HomeSectionHeader({
   eyebrow,
@@ -56,7 +56,7 @@ export function HomeSectionHeader({
         >
           <Link
             href={href}
-            className="group inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground transition hover:text-amber focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/50"
+            className="group inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-xs uppercase tracking-[0.2em] text-muted-foreground transition hover:text-amber focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/50"
           >
             {linkLabel}
             <span
@@ -102,7 +102,7 @@ export function HomeProductRail({
               key={product.id}
               className="border-r border-b border-border/40"
             >
-              <ProductCard product={product} index={i} />
+              <HomeProductTile product={product} index={i} />
             </div>
           ))}
         </div>
@@ -111,7 +111,40 @@ export function HomeProductRail({
   );
 }
 
+function completeRowCount(total: number, cols: number) {
+  if (cols <= 0 || total <= 0) return total;
+  const complete = Math.floor(total / cols) * cols;
+  return complete > 0 ? complete : total;
+}
+
+function useCompleteRowCount(total: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [limit, setLimit] = useState(() => completeRowCount(total, 2));
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const cols = getComputedStyle(el)
+        .gridTemplateColumns.split(/\s+/)
+        .filter(Boolean).length;
+      setLimit(completeRowCount(total, cols));
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [total]);
+
+  return { ref, limit };
+}
+
 export function HomeBrandGrid({ brands }: { brands: Brand[] }) {
+  const { ref, limit } = useCompleteRowCount(brands.length);
+  const shown = brands.slice(0, limit);
+
   if (brands.length === 0) return null;
 
   return (
@@ -121,10 +154,13 @@ export function HomeBrandGrid({ brands }: { brands: Brand[] }) {
           eyebrow="Curated houses"
           title="Shop by brand"
           href="/brands"
-          linkLabel="Browse all maisons"
+          linkLabel="See all maisons"
         />
-        <div className="grid grid-cols-2 border-t border-l border-border/40 lg:grid-cols-3">
-          {brands.map((brand, i) => (
+        <div
+          ref={ref}
+          className="grid grid-cols-2 border-t border-l border-border/40 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        >
+          {shown.map((brand, i) => (
             <motion.div
               key={brand.id}
               initial={{ opacity: 0, y: 20 }}
@@ -146,7 +182,7 @@ export function HomeBrandGrid({ brands }: { brands: Brand[] }) {
                     src={brand.banner_url}
                     alt=""
                     fill
-                    sizes="(max-width:768px) 50vw, 33vw"
+                    sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, (max-width:1280px) 25vw, 20vw"
                     className="object-cover transition duration-700 ease-out group-hover:scale-[1.05]"
                   />
                 ) : brand.logo_url ? (

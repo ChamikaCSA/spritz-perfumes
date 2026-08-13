@@ -74,6 +74,7 @@ export function ShopToolbarSkeleton() {
         <Skeleton className="h-11 w-full sm:w-64" />
         <Skeleton className="h-11 w-28" />
         <Skeleton className="h-11 w-24" />
+        <Skeleton className="size-11 sm:size-9" />
       </div>
     </div>
   );
@@ -96,13 +97,16 @@ export function HomeSkeleton() {
     <div aria-busy="true" aria-label="Loading home">
       <section className="relative min-h-svh overflow-hidden bg-secondary/20">
         <Skeleton className="absolute inset-0 rounded-none opacity-40" />
-        <div className="relative z-10 flex min-h-svh flex-col justify-end px-4 pb-14 pt-28 sm:px-6 sm:pb-20 lg:justify-center lg:px-8 lg:pb-24 lg:pt-32">
+        <div className="relative z-10 flex min-h-svh flex-col justify-between gap-10 px-4 pb-14 pt-28 sm:gap-12 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24 lg:pt-36">
           <div className="mx-auto w-full max-w-7xl lg:pl-10 xl:pl-14">
+            <Skeleton className="mb-4 h-3 w-40 lg:hidden" />
             <Skeleton className="mb-6 h-px w-16 sm:mb-8 sm:w-24" />
             <Skeleton className="h-12 w-56 sm:h-16 sm:w-80 lg:h-20 lg:w-96" />
             <Skeleton className="mt-3 h-12 w-48 sm:h-16 sm:w-72 lg:h-20 lg:w-80" />
             <Skeleton className="mt-3 h-12 w-40 sm:h-16 sm:w-64 lg:h-20 lg:w-72" />
-            <Skeleton className="mt-8 h-4 w-64 max-w-full sm:mt-10" />
+          </div>
+          <div className="mx-auto w-full max-w-7xl lg:pl-10 xl:pl-14">
+            <Skeleton className="h-4 w-64 max-w-full" />
             <div className="mt-8 flex gap-3 sm:mt-10">
               <Skeleton className="h-12 w-36" />
               <Skeleton className="h-12 w-32" />
@@ -143,8 +147,8 @@ export function HomeSkeleton() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <SectionHeaderSkeleton />
-        <div className="grid items-center gap-8 md:grid-cols-2 md:gap-14">
-          <Skeleton className="aspect-4/5 w-full max-w-sm md:max-w-none" />
+        <div className="grid items-center gap-8 md:grid-cols-2 md:gap-10">
+          <Skeleton className="aspect-4/5 w-full max-w-xs sm:max-w-sm md:max-w-md" />
           <div className="space-y-4">
             <Skeleton className="h-3 w-40" />
             <Skeleton className="h-10 w-56" />
@@ -155,15 +159,15 @@ export function HomeSkeleton() {
         </div>
         <div className="mt-10 grid grid-cols-2 gap-0 *:border-r *:border-b *:border-border/40 md:grid-cols-4">
           {Array.from({ length: 4 }, (_, i) => (
-            <ProductCardSkeleton key={i} />
+            <Skeleton key={i} className="aspect-4/5 w-full rounded-none" />
           ))}
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <SectionHeaderSkeleton />
-        <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => (
+        <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 10 }, (_, i) => (
             <BrandTileSkeleton key={i} />
           ))}
         </div>
@@ -171,7 +175,11 @@ export function HomeSkeleton() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <SectionHeaderSkeleton />
-        <ProductGridSkeleton count={4} className="md:grid-cols-4" />
+        <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="aspect-4/5 w-full rounded-none" />
+          ))}
+        </div>
       </section>
 
       <section className="border-t border-border/40 bg-secondary/20 py-16 sm:py-20">
@@ -198,7 +206,10 @@ export function ShopSkeleton() {
     >
       <PageHeaderSkeleton />
       <ShopToolbarSkeleton />
-      <ProductGridSkeleton count={6} className="lg:grid-cols-3" />
+      <ProductGridSkeleton
+        count={10}
+        className="md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      />
     </div>
   );
 }
@@ -206,9 +217,9 @@ export function ShopSkeleton() {
 export function ProductSkeleton() {
   return (
     <div className="pb-14 sm:pb-20 lg:pb-24" aria-busy="true" aria-label="Loading product">
-      <div className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-32">
-        <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-12 xl:gap-16">
-          <Skeleton className="aspect-4/5 w-full" />
+      <div className="mx-auto max-w-7xl px-4 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-28">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-12">
+          <Skeleton className="aspect-square w-full sm:aspect-4/5 lg:max-h-[calc(100svh-11rem)]" />
           <div className="flex min-w-0 flex-col">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="mt-3 h-10 w-3/4 sm:h-14" />
@@ -243,8 +254,8 @@ export function BrandsSkeleton() {
       aria-label="Loading brands"
     >
       <PageHeaderSkeleton className="mb-6 sm:mb-10 lg:mb-12" />
-      <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
-        {Array.from({ length: 6 }, (_, i) => (
+      <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {Array.from({ length: 10 }, (_, i) => (
           <BrandTileSkeleton key={i} />
         ))}
       </div>
@@ -273,8 +284,8 @@ export function BrandDetailSkeleton() {
 
       <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
         <ProductGridSkeleton
-          count={8}
-          className="md:grid-cols-3 lg:grid-cols-4"
+          count={10}
+          className="md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
         />
       </div>
     </div>
@@ -298,8 +309,8 @@ export function WishlistSkeleton({
     >
       {includeHeader ? <PageHeaderSkeleton className="mb-6 sm:mb-10" /> : null}
       <ProductGridSkeleton
-        count={8}
-        className="md:grid-cols-3 lg:grid-cols-4"
+        count={10}
+        className="md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
       />
     </div>
   );

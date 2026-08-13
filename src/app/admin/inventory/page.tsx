@@ -7,7 +7,10 @@ import {
   AdminFormSection,
   adminFieldClass,
 } from "@/components/admin/admin-form";
-import { OpenLotButton } from "@/components/admin/open-lot-button";
+import {
+  OpenLotButton,
+  ResealLotButton,
+} from "@/components/admin/open-lot-button";
 import {
   AdminEmpty,
   AdminPageHeader,
@@ -17,13 +20,19 @@ import {
   adminGhostButtonClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus, lotStatusTone } from "@/components/admin/admin-status";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Inventory · Admin" };
 
-export default async function AdminInventoryPage() {
+export default async function AdminInventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; events?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <div>
@@ -35,23 +44,41 @@ export default async function AdminInventoryPage() {
     );
   }
 
+  const params = await searchParams;
+  const lotsPage = parsePage(params.page);
+  const eventsPage = parsePage(params.events);
+  const lotsRange = pageRange(lotsPage, PAGE_SIZE.admin);
+  const eventsRange = pageRange(eventsPage, PAGE_SIZE.inventoryEvents);
   const supabase = await createClient();
-  const [{ data: products }, { data: lots }, { data: events }] =
-    await Promise.all([
-      supabase
-        .from("products")
-        .select("id, name, brands(name)")
-        .order("name"),
-      supabase
-        .from("inventory_lots")
-        .select("*, products(name, brands(name))")
-        .order("received_at", { ascending: false }),
-      supabase
-        .from("inventory_events")
-        .select("*, products(name)")
-        .order("created_at", { ascending: false })
-        .limit(40),
-    ]);
+  const [
+    { data: products },
+    { data: lots, count: lotsCount },
+    { data: events, count: eventsCount },
+  ] = await Promise.all([
+    supabase.from("products").select("id, name, brands(name)").order("name"),
+    supabase
+      .from("inventory_lots")
+      .select("*, products(name, brands(name))", { count: "exact" })
+      .order("received_at", { ascending: false })
+      .range(lotsRange.from, lotsRange.to),
+    supabase
+      .from("inventory_events")
+      .select("*, products(name)", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(eventsRange.from, eventsRange.to),
+  ]);
+  const lotsResult = pageFromTotal(
+    lots ?? [],
+    lotsCount ?? 0,
+    lotsPage,
+    PAGE_SIZE.admin,
+  );
+  const eventsResult = pageFromTotal(
+    events ?? [],
+    eventsCount ?? 0,
+    eventsPage,
+    PAGE_SIZE.inventoryEvents,
+  );
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -67,7 +94,7 @@ export default async function AdminInventoryPage() {
           >
             <AdminForm action={receiveInventory} bare>
               <AdminFormSection>
-                <AdminField label="Product">
+                <AdminField label="Product" required>
                   <select
                     name="product_id"
                     required
@@ -95,6 +122,7 @@ export default async function AdminInventoryPage() {
                   <AdminField
                     label="Fill (ml)"
                     hint="Bottle capacity, e.g. 100"
+                    required
                   >
                     <input
                       name="fill_ml"
@@ -113,14 +141,14 @@ export default async function AdminInventoryPage() {
                       className={adminFieldClass}
                     />
                   </AdminField>
-                  <AdminField label="Cost (LKR)" hint="Optional">
+                  <AdminField label="Cost (LKR)">
                     <input
                       name="cost_lkr"
                       type="number"
                       className={adminFieldClass}
                     />
                   </AdminField>
-                  <AdminField label="Notes" hint="Optional">
+                  <AdminField label="Notes">
                     <input name="notes" className={adminFieldClass} />
                   </AdminField>
                 </AdminFieldGrid>
@@ -134,9 +162,9 @@ export default async function AdminInventoryPage() {
       />
 
       <AdminPanel>
-        {(lots ?? []).length ? (
-          <ul className="divide-y divide-border/50">
-            {(lots ?? []).map((lot) => {
+        {lotsResult.items.length ? (
+          <ul id="lots-results" className="scroll-mt-20 divide-y divide-border/50">
+            {lotsResult.items.map((lot) => {
               const product = lot.products as {
                 name: string;
                 brands: { name: string } | { name: string }[];
@@ -167,7 +195,11 @@ export default async function AdminInventoryPage() {
                     {lot.status === "sealed" ? (
                       <OpenLotButton lotId={lot.id} />
                     ) : null}
-                    {lot.status !== "depleted" ? (
+                    {lot.status === "open" &&
+                    Number(lot.remaining_ml) === Number(lot.fill_ml) ? (
+                      <ResealLotButton lotId={lot.id} />
+                    ) : null}
+                    {lot.status === "open" ? (
                       <AdminFormDialog
                         triggerLabel="Adjust"
                         title="Adjust stock"
@@ -192,6 +224,7 @@ export default async function AdminInventoryPage() {
                             <AdminField
                               label="Change (ml)"
                               hint="Negative to reduce"
+                              required
                             >
                               <input
                                 name="delta_ml"
@@ -222,12 +255,25 @@ export default async function AdminInventoryPage() {
         ) : (
           <AdminEmpty>No lots yet</AdminEmpty>
         )}
+        <PaginationNav
+          page={lotsResult.page}
+          pageCount={lotsResult.pageCount}
+          total={lotsResult.total}
+          pageSize={lotsResult.pageSize}
+          pathname="/admin/inventory"
+          query={{ events: eventsPage > 1 ? String(eventsPage) : undefined }}
+          resultsId="lots-results"
+          compact
+        />
       </AdminPanel>
 
       <AdminPanel title="History">
-        {(events ?? []).length ? (
-          <ul className="divide-y divide-border/40 text-sm text-muted-foreground">
-            {(events ?? []).map((event) => {
+        {eventsResult.items.length ? (
+          <ul
+            id="event-results"
+            className="scroll-mt-20 divide-y divide-border/40 text-sm text-muted-foreground"
+          >
+            {eventsResult.items.map((event) => {
               const product = event.products as { name: string } | null;
               return (
                 <li
@@ -251,6 +297,17 @@ export default async function AdminInventoryPage() {
         ) : (
           <AdminEmpty>No events yet</AdminEmpty>
         )}
+        <PaginationNav
+          page={eventsResult.page}
+          pageCount={eventsResult.pageCount}
+          total={eventsResult.total}
+          pageSize={eventsResult.pageSize}
+          pathname="/admin/inventory"
+          query={{ page: lotsPage > 1 ? String(lotsPage) : undefined }}
+          pageKey="events"
+          resultsId="event-results"
+          compact
+        />
       </AdminPanel>
     </div>
   );

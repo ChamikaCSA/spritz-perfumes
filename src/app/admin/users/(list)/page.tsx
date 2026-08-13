@@ -6,12 +6,18 @@ import {
   adminRowActionClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus } from "@/components/admin/admin-status";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
 
 export const metadata = { title: "Users · Admin" };
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <div>
@@ -23,14 +29,23 @@ export default async function AdminUsersPage() {
     );
   }
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const { from, to } = pageRange(page, PAGE_SIZE.admin);
   const supabase = await createClient();
-  const [{ data: profiles }, { data: orders }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false }),
-    supabase.from("orders").select("user_id, total_lkr, status"),
-  ]);
+  const { data: profiles, count } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  const result = pageFromTotal(profiles ?? [], count ?? 0, page, PAGE_SIZE.admin);
+  const userIds = result.items.map((p) => p.id);
+  const { data: orders } = userIds.length
+    ? await supabase
+        .from("orders")
+        .select("user_id, total_lkr, status")
+        .in("user_id", userIds)
+    : { data: [] as { user_id: string | null; total_lkr: number; status: string }[] };
 
   const spend = new Map<string, { count: number; total: number }>();
   for (const o of orders ?? []) {
@@ -51,10 +66,11 @@ export default async function AdminUsersPage() {
       />
 
       <AdminPanel>
-        {(profiles ?? []).length ? (
+        {result.items.length ? (
           <>
+            <div id="results" className="scroll-mt-20">
             <ul className="divide-y divide-border/50 md:hidden">
-              {(profiles ?? []).map((p) => {
+              {result.items.map((p) => {
                 const stats = spend.get(p.id) ?? { count: 0, total: 0 };
                 return (
                   <li
@@ -103,7 +119,7 @@ export default async function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {(profiles ?? []).map((p) => {
+                  {result.items.map((p) => {
                     const stats = spend.get(p.id) ?? { count: 0, total: 0 };
                     return (
                       <tr key={p.id}>
@@ -140,6 +156,15 @@ export default async function AdminUsersPage() {
                 </tbody>
               </table>
             </div>
+            </div>
+            <PaginationNav
+              page={result.page}
+              pageCount={result.pageCount}
+              total={result.total}
+              pageSize={result.pageSize}
+              pathname="/admin/users"
+              compact
+            />
           </>
         ) : (
           <AdminEmpty>No users yet</AdminEmpty>

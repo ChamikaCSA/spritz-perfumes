@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAdminFormDialog } from "@/components/admin/admin-form-dialog";
 import { cn } from "@/lib/utils";
 import {
@@ -26,9 +27,13 @@ export function AdminForm({
 
   async function handleSubmit(formData: FormData) {
     if (!action) return;
-    await action(formData);
-    if (closeOnSuccess && dialog) dialog.close();
-    router.refresh();
+    try {
+      await action(formData);
+      if (closeOnSuccess && dialog) dialog.close();
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    }
   }
 
   return (
@@ -78,11 +83,13 @@ export function AdminFormSection({
 export function AdminField({
   label,
   hint,
+  required,
   children,
   className,
 }: {
   label: string;
   hint?: string;
+  required?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -90,6 +97,7 @@ export function AdminField({
     <label className={cn("block space-y-1.5", className)}>
       <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
         {label}
+        {required ? <span className="text-amber"> *</span> : null}
       </span>
       {children}
       {hint ? (

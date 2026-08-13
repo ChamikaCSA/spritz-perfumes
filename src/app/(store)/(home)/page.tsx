@@ -12,15 +12,23 @@ import {
   getBrands,
   getProducts,
 } from "@/lib/catalog";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata = buildMetadata({
+  title: "Luxury perfume decants in Sri Lanka",
+  description:
+    "Shop authentic full bottles and fine decants from Chanel, Dior, Creed, and more. Try before you buy with island-wide delivery across Sri Lanka.",
+  path: "/",
+});
 
 export default async function HomePage() {
   const [brands, newest, bestSellers] = await Promise.all([
-    getBrands(),
-    getProducts({ sort: "newest" }),
+    getBrands({ limit: 48 }),
+    getProducts({ sort: "newest", limit: 4 }),
     getBestSellers(5),
   ]);
 
-  const arrivalList = newest.slice(0, 4);
+  const arrivalList = newest;
 
   return (
     <>
@@ -30,7 +38,7 @@ export default async function HomePage() {
 
       <HomeBestSellers products={bestSellers} />
 
-      <HomeBrandGrid brands={brands} />
+      <HomeBrandGrid brands={brands.slice(0, 12)} />
 
       <HomeProductRail
         eyebrow="Just landed"

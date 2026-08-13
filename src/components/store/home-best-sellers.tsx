@@ -5,12 +5,11 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ImageEdgeFade } from "@/components/store/image-edge-fade";
 import { homeEase, homeViewport } from "@/components/store/home-motion";
-import { ProductCard } from "@/components/store/product-card";
+import { HomeProductTile } from "@/components/store/home-product-tile";
 import type { Product } from "@/lib/types";
-import { formatLkr, lowestPrice } from "@/lib/utils-commerce";
+import { FromPrice } from "@/components/store/store-price";
 
 function BestSellerLead({ product }: { product: Product }) {
-  const from = lowestPrice(product.variants);
   const href = `/product/${product.slug}`;
   const reduceMotion = useReducedMotion();
   const notes = [
@@ -19,7 +18,7 @@ function BestSellerLead({ product }: { product: Product }) {
   ].slice(0, 3);
 
   return (
-    <div className="relative grid items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-10 lg:gap-14">
+    <div className="relative grid items-center gap-6 sm:gap-8 md:grid-cols-2 md:gap-10 lg:gap-12">
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, scale: 1.04 }}
         whileInView={{ opacity: 1, scale: 1 }}
@@ -28,13 +27,13 @@ function BestSellerLead({ product }: { product: Product }) {
       >
         <Link
           href={href}
-          className="group relative mx-auto block aspect-4/5 w-full max-w-sm overflow-hidden bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/50 md:mx-0 md:max-w-none"
+          className="group relative mx-auto block aspect-4/5 w-full max-w-xs overflow-hidden bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber/50 sm:max-w-sm md:max-w-md"
         >
           <Image
             src={product.images[0] ?? "/products/placeholder.svg"}
             alt={product.name}
             fill
-            sizes="(max-width:768px) 384px, 50vw"
+            sizes="(max-width:768px) 320px, 448px"
             className="object-cover object-center transition duration-700 ease-out group-hover:scale-[1.04]"
           />
           <ImageEdgeFade />
@@ -110,7 +109,7 @@ function BestSellerLead({ product }: { product: Product }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={homeViewport}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="mt-7 flex flex-col gap-4 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5"
+          className="mt-6 flex flex-col gap-4 sm:mt-7 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5"
         >
           <Link
             href={href}
@@ -120,7 +119,7 @@ function BestSellerLead({ product }: { product: Product }) {
             <span className="relative">Shop this bottle</span>
           </Link>
           <p className="text-center text-sm text-muted-foreground sm:text-left">
-            {product.concentration} · from {formatLkr(from)}
+            {product.concentration} · <FromPrice variants={product.variants} />
           </p>
         </motion.div>
       </div>
@@ -142,8 +141,8 @@ export function HomeBestSellers({ products }: { products: Product[] }) {
         className="pointer-events-none absolute left-1/2 top-[22%] h-[55%] w-[70%] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.1),transparent_68%)] blur-3xl"
         aria-hidden
       />
-      <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-24">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-12">
+      <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-10">
           <div className="min-w-0">
             <motion.p
               initial={{ opacity: 0, y: 10 }}
@@ -187,13 +186,13 @@ export function HomeBestSellers({ products }: { products: Product[] }) {
           <BestSellerLead product={lead} />
 
           {rest.length > 0 ? (
-            <div className="mt-10 grid grid-cols-2 border-t border-l border-border/40 sm:mt-12 md:grid-cols-3 lg:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 border-t border-l border-border/40 sm:mt-8 md:grid-cols-3 lg:grid-cols-4">
               {rest.map((product, i) => (
                 <div
                   key={product.id}
                   className="border-r border-b border-border/40"
                 >
-                  <ProductCard product={product} index={i} />
+                  <HomeProductTile product={product} index={i} rank={i + 2} />
                 </div>
               ))}
             </div>

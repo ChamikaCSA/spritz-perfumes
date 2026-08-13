@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata = { title: "About" };
+export const metadata = buildMetadata({
+  title: "About",
+  description:
+    "Spritz Perfumes is a Sri Lanka based house for authentic full-size bottles and carefully poured decants, with island-wide delivery.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

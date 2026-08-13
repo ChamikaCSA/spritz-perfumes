@@ -3,8 +3,11 @@ import { redirect } from "next/navigation";
 import { AccountNav } from "@/components/store/account-nav";
 import { SignOutButton } from "@/components/store/sign-out-button";
 import { getReviewPromptsForUser } from "@/lib/catalog";
+import { privateRouteMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/utils-commerce";
+
+export const metadata = privateRouteMetadata;
 
 export default async function AccountLayout({
   children,

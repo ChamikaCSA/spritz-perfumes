@@ -19,6 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { CatalogStyleToggle } from "@/components/store/catalog-style";
 import type { ProductGender, ProductSort, ProductSortOrder } from "@/lib/types";
 import { defaultSortOrder } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -80,9 +81,13 @@ function advancedCount(params: ShopQuery) {
 export function ShopToolbar({
   params,
   resultCount,
+  page,
+  pageSize,
 }: {
   params: ShopQuery;
   resultCount: number;
+  page?: number;
+  pageSize?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -241,8 +246,8 @@ export function ShopToolbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted-foreground sm:flex-none">
-            <span className="shrink-0 uppercase tracking-[0.14em]">Sort</span>
+          <label className="flex min-w-0 flex-1 sm:flex-none">
+            <span className="sr-only">Sort</span>
             <select
               value={(params.sort as ProductSort | undefined) ?? "name"}
               onChange={(e) => {
@@ -289,6 +294,8 @@ export function ShopToolbar({
             )}
           </button>
 
+          <CatalogStyleToggle />
+
           <Sheet
             open={open}
             onOpenChange={(next) => {
@@ -310,8 +317,12 @@ export function ShopToolbar({
               render={
                 <button
                   type="button"
+                  aria-label={
+                    extra > 0 ? `Filters, ${extra} active` : "Filters"
+                  }
+                  title="Filters"
                   className={cn(
-                    "inline-flex h-11 items-center gap-2 border px-3 text-[11px] uppercase tracking-[0.14em] transition sm:h-9",
+                    "relative inline-flex size-11 items-center justify-center border transition sm:size-9",
                     extra > 0
                       ? "border-amber/50 text-amber"
                       : "border-border text-muted-foreground hover:text-foreground",
@@ -319,10 +330,9 @@ export function ShopToolbar({
                 />
               }
             >
-              <SlidersHorizontal className="size-3.5" />
-              Filters
+              <SlidersHorizontal className="size-4" />
               {extra > 0 ? (
-                <span className="flex size-4 items-center justify-center rounded-full bg-amber text-[10px] font-medium text-primary-foreground">
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-amber text-[10px] font-medium text-primary-foreground">
                   {extra}
                 </span>
               ) : null}
@@ -453,8 +463,10 @@ export function ShopToolbar({
 
       {/* Meta + active pills */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/40 pt-4">
-        <p className="text-xs text-muted-foreground">
-          {resultCount} {resultCount === 1 ? "fragrance" : "fragrances"}
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {page && pageSize && resultCount > 0
+            ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, resultCount)} of ${resultCount} ${resultCount === 1 ? "fragrance" : "fragrances"}`
+            : `${resultCount} ${resultCount === 1 ? "fragrance" : "fragrances"}`}
         </p>
         {activePills.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">

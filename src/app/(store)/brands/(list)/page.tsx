@@ -1,11 +1,36 @@
-import Image from "next/image";
-import Link from "next/link";
-import { getBrands } from "@/lib/catalog";
+import { cookies } from "next/headers";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import {
+  CatalogBrandResults,
+  CatalogStyleProvider,
+  CatalogStyleToggle,
+} from "@/components/store/catalog-style";
+import { getBrandPage } from "@/lib/catalog";
+import {
+  CATALOG_STYLE_COOKIE,
+  parseCatalogStyle,
+} from "@/lib/catalog-style";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata = { title: "Brands" };
+export const metadata = buildMetadata({
+  title: "Brands",
+  description:
+    "Explore luxury fragrance houses at Spritz Perfumes — Chanel, Dior, Creed, Tom Ford, and more. Full bottles and decants in Sri Lanka.",
+  path: "/brands",
+});
 
-export default async function BrandsPage() {
-  const brands = await getBrands();
+export default async function BrandsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page } = await searchParams;
+  const catalogStyle = parseCatalogStyle(
+    (await cookies()).get(CATALOG_STYLE_COOKIE)?.value,
+  );
+  const result = await getBrandPage(parsePage(page), PAGE_SIZE.brands);
+  const brands = result.items;
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pt-32">
@@ -18,54 +43,19 @@ export default async function BrandsPage() {
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 lg:grid-cols-3">
-        {brands.map((brand) => (
-          <li key={brand.id}>
-            <Link
-              href={`/brands/${brand.slug}`}
-              className="group block transition"
-            >
-              <div className="relative aspect-16/10 overflow-hidden bg-secondary/40 sm:aspect-21/9">
-                {brand.banner_url ? (
-                  <Image
-                    src={brand.banner_url}
-                    alt=""
-                    fill
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                    className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
-                  />
-                ) : brand.logo_url ? (
-                  <div className="flex h-full items-center justify-center bg-[#f3ebe0] p-4 sm:p-8">
-                    <Image
-                      src={brand.logo_url}
-                      alt=""
-                      width={160}
-                      height={160}
-                      className="h-12 w-auto object-contain opacity-90 transition group-hover:opacity-100 sm:h-16"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <span className="font-display text-2xl text-muted-foreground/50 group-hover:text-amber sm:text-3xl">
-                      {brand.name.slice(0, 1)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="px-3 pb-4 pt-2.5 sm:px-4 sm:pb-5 sm:pt-3">
-                <h2 className="truncate font-display text-lg group-hover:text-amber sm:text-2xl">
-                  {brand.name}
-                </h2>
-                {brand.country ? (
-                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:mt-1 sm:text-xs">
-                    {brand.country}
-                  </p>
-                ) : null}
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <CatalogStyleProvider initialStyle={catalogStyle}>
+        <div className="mb-4 flex justify-end sm:mb-6">
+          <CatalogStyleToggle />
+        </div>
+        <CatalogBrandResults brands={brands} />
+        <PaginationNav
+          page={result.page}
+          pageCount={result.pageCount}
+          total={result.total}
+          pageSize={result.pageSize}
+          pathname="/brands"
+        />
+      </CatalogStyleProvider>
     </div>
   );
 }

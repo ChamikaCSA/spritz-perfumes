@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { BRAND_CONTACT, BRAND_SOCIAL } from "@/lib/brand";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata = { title: "Contact" };
+export const metadata = buildMetadata({
+  title: "Contact",
+  description:
+    "Get in touch with Spritz Perfumes in Sri Lanka. WhatsApp, email, and social — daily 08:00–22:00 SLST.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

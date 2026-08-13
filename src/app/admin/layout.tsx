@@ -3,6 +3,9 @@ import {
   AdminMobileNav,
   AdminSidebar,
 } from "@/components/admin/admin-nav";
+import { privateRouteMetadata } from "@/lib/seo";
+
+export const metadata = privateRouteMetadata;
 
 export default function AdminLayout({
   children,

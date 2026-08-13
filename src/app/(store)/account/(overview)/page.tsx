@@ -5,7 +5,11 @@ import {
   AccountPanel,
   AccountStatus,
 } from "@/components/store/account-shell";
-import { getOrdersForUser, getReviewPromptsForUser } from "@/lib/catalog";
+import {
+  countOrdersForUser,
+  getOrdersForUser,
+  getReviewPromptsForUser,
+} from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
 
@@ -29,14 +33,15 @@ export default async function AccountPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: profile }, orders, reviewPrompts, { count: addressCount }] =
+  const [{ data: profile }, orderCount, recentOrders, reviewPrompts, { count: addressCount }] =
     await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, phone")
         .eq("id", user.id)
         .maybeSingle(),
-      getOrdersForUser(user.id),
+      countOrdersForUser(user.id),
+      getOrdersForUser(user.id, { limit: 4, includeItems: false }),
       getReviewPromptsForUser(user.id),
       supabase
         .from("addresses")
@@ -45,7 +50,6 @@ export default async function AccountPage() {
     ]);
 
   const awaitingReview = reviewPrompts.filter((p) => !p.existingReview);
-  const recentOrders = orders.slice(0, 4);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -63,7 +67,7 @@ export default async function AccountPage() {
             Orders
           </p>
           <p className="mt-2 font-display text-2xl tabular-nums sm:mt-3 sm:text-4xl">
-            {orders.length}
+            {orderCount}
           </p>
         </Link>
         <Link
@@ -162,7 +166,7 @@ export default async function AccountPage() {
       <AccountPanel
         title="Recent orders"
         action={
-          orders.length > 0 ? (
+          orderCount > 0 ? (
             <Link
               href="/account/orders"
               className="inline-flex min-h-11 items-center text-xs uppercase tracking-[0.16em] text-muted-foreground hover:text-amber"

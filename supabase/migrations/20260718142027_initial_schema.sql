@@ -94,6 +94,7 @@ create table public.products (
   year_released integer,
   perfumers text[] not null default '{}',
   collection public.product_collection not null default 'core',
+  inspired_by text,
   search_vector tsvector,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -393,6 +394,7 @@ begin
     setweight(to_tsvector('english', coalesce(new.name, '')), 'A') ||
     setweight(to_tsvector('english', coalesce(brand_name, '')), 'A') ||
     setweight(to_tsvector('english', coalesce(new.description, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(new.inspired_by, '')), 'B') ||
     setweight(to_tsvector('english', coalesce(new.notes::text, '')), 'C') ||
     setweight(to_tsvector('english', coalesce(array_to_string(new.perfumers, ' '), '')), 'C');
   return new;
@@ -400,7 +402,7 @@ end;
 $$;
 
 create trigger products_search_vector_trigger
-  before insert or update of name, description, notes, brand_id, perfumers
+  before insert or update of name, description, notes, brand_id, perfumers, inspired_by
   on public.products
   for each row execute function public.products_search_vector_update();
 

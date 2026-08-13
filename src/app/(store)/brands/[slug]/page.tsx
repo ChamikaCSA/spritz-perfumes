@@ -1,29 +1,78 @@
 import Image from "next/image";
+import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { ProductCard } from "@/components/store/product-card";
-import { getBrandBySlug, getProducts } from "@/lib/catalog";
+import { JsonLd } from "@/components/seo/json-ld";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import {
+  CatalogProductResults,
+  CatalogStyleProvider,
+  CatalogStyleToggle,
+} from "@/components/store/catalog-style";
+import { getBrandBySlug, getProductPage } from "@/lib/catalog";
+import {
+  CATALOG_STYLE_COOKIE,
+  parseCatalogStyle,
+} from "@/lib/catalog-style";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import {
+  brandJsonLd,
+  breadcrumbJsonLd,
+  buildMetadata,
+} from "@/lib/seo";
 
 type Params = Promise<{ slug: string }>;
+type SearchParams = Promise<{ page?: string }>;
 
 export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params;
   const brand = await getBrandBySlug(slug);
   if (!brand) return { title: "Brand" };
-  return {
+
+  const description =
+    brand.description ??
+    `Shop ${brand.name} fragrances at Spritz Perfumes — authentic full bottles and decants delivered across Sri Lanka.`;
+
+  return buildMetadata({
     title: brand.name,
-    description: brand.description ?? undefined,
-  };
+    description,
+    path: `/brands/${brand.slug}`,
+    image: brand.banner_url ?? brand.logo_url,
+  });
 }
 
-export default async function BrandDetailPage({ params }: { params: Params }) {
+export default async function BrandDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { slug } = await params;
+  const { page: pageParam } = await searchParams;
+  const catalogStyle = parseCatalogStyle(
+    (await cookies()).get(CATALOG_STYLE_COOKIE)?.value,
+  );
   const brand = await getBrandBySlug(slug);
   if (!brand) notFound();
 
-  const products = await getProducts({ brand: brand.slug });
+  const result = await getProductPage({
+    brand: brand.slug,
+    page: parsePage(pageParam),
+    pageSize: PAGE_SIZE.brand,
+  });
+  const products = result.items;
+
+  const breadcrumbs = [
+    { name: "Brands", path: "/brands" },
+    { name: brand.name, path: `/brands/${brand.slug}` },
+  ];
 
   return (
     <div className="pb-20">
+      <JsonLd
+        data={[breadcrumbJsonLd(breadcrumbs), ...brandJsonLd(brand, products)]}
+      />
       <section className="relative isolate overflow-hidden border-b border-border/40">
         {brand.banner_url ? (
           <>
@@ -52,6 +101,25 @@ export default async function BrandDetailPage({ params }: { params: Params }) {
         )}
 
         <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-20 sm:px-6 sm:pb-12 sm:pt-28 lg:px-8 lg:pt-32">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-6 text-xs uppercase tracking-[0.16em] text-muted-foreground"
+          >
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {breadcrumbs.map((crumb, index) => (
+                <li key={crumb.path} className="flex items-center gap-2">
+                  {index > 0 ? <span aria-hidden>·</span> : null}
+                  {index < breadcrumbs.length - 1 ? (
+                    <Link href={crumb.path} className="hover:text-amber">
+                      {crumb.name}
+                    </Link>
+                  ) : (
+                    <span className="text-foreground">{crumb.name}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
             {brand.logo_url ? (
               <div className="relative size-24 shrink-0 overflow-hidden bg-[#f3ebe0] shadow-[0_0_0_1px_rgba(212,175,55,0.15)] sm:size-28">
@@ -103,11 +171,21 @@ export default async function BrandDetailPage({ params }: { params: Params }) {
             No fragrances from this house yet.
           </p>
         ) : (
-          <div className="grid grid-cols-2 *:border-r *:border-b *:border-border/40 md:grid-cols-3 lg:grid-cols-4">
-            {products.map((product, i) => (
-              <ProductCard key={product.id} product={product} index={i} />
-            ))}
-          </div>
+          <>
+            <CatalogStyleProvider initialStyle={catalogStyle}>
+              <div className="mb-4 flex justify-end sm:mb-6">
+                <CatalogStyleToggle />
+              </div>
+              <CatalogProductResults products={products} />
+              <PaginationNav
+                page={result.page}
+                pageCount={result.pageCount}
+                total={result.total}
+                pageSize={result.pageSize}
+                pathname={`/brands/${brand.slug}`}
+              />
+            </CatalogStyleProvider>
+          </>
         )}
       </div>
     </div>

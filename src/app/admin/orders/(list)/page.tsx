@@ -6,12 +6,18 @@ import {
   adminRowActionClass,
 } from "@/components/admin/admin-shell";
 import { AdminStatus, orderStatusTone } from "@/components/admin/admin-status";
+import { PaginationNav } from "@/components/store/pagination-nav";
+import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
 import { createClient } from "@/lib/supabase/server";
 import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
 
 export const metadata = { title: "Orders · Admin" };
 
-export default async function AdminOrdersPage() {
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   if (!isSupabaseConfigured()) {
     return (
       <div>
@@ -23,11 +29,19 @@ export default async function AdminOrdersPage() {
     );
   }
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const { from, to } = pageRange(page, PAGE_SIZE.admin);
   const supabase = await createClient();
-  const { data: orders } = await supabase
+  const { data: orders, count } = await supabase
     .from("orders")
-    .select("id, order_number, first_name, last_name, status, total_lkr, created_at")
-    .order("created_at", { ascending: false });
+    .select(
+      "id, order_number, first_name, last_name, status, total_lkr, created_at",
+      { count: "exact" },
+    )
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  const result = pageFromTotal(orders ?? [], count ?? 0, page, PAGE_SIZE.admin);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -37,10 +51,11 @@ export default async function AdminOrdersPage() {
       />
 
       <AdminPanel>
-        {(orders ?? []).length ? (
+        {result.items.length ? (
           <>
+            <div id="results" className="scroll-mt-20">
             <ul className="divide-y divide-border/50 md:hidden">
-              {(orders ?? []).map((order) => (
+              {result.items.map((order) => (
                 <li
                   key={order.id}
                   className="flex items-center gap-2 px-0 py-2 sm:gap-3 sm:py-2.5"
@@ -90,7 +105,7 @@ export default async function AdminOrdersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {(orders ?? []).map((order) => (
+                  {result.items.map((order) => (
                     <tr key={order.id}>
                       <td className="px-3 py-2 font-medium tabular-nums">
                         {order.order_number}
@@ -122,6 +137,15 @@ export default async function AdminOrdersPage() {
                 </tbody>
               </table>
             </div>
+            </div>
+            <PaginationNav
+              page={result.page}
+              pageCount={result.pageCount}
+              total={result.total}
+              pageSize={result.pageSize}
+              pathname="/admin/orders"
+              compact
+            />
           </>
         ) : (
           <AdminEmpty>No orders yet</AdminEmpty>
