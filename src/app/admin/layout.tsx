@@ -2,7 +2,7 @@ import {
   AdminMobileHeader,
   AdminMobileNav,
   AdminSidebar,
-} from "@/components/admin/admin-nav";
+} from "@/components/admin/layout/admin-nav";
 import { privateRouteMetadata } from "@/lib/seo";
 
 export const metadata = privateRouteMetadata;

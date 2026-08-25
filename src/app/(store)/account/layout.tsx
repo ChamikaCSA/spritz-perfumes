@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AccountNav } from "@/components/store/account-nav";
-import { SignOutButton } from "@/components/store/sign-out-button";
-import { getReviewPromptsForUser } from "@/lib/catalog";
+import { AccountNav } from "@/components/store/account/account-nav";
+import { SignOutButton } from "@/components/shared/sign-out-button";
+import { isDemoMode, getSessionUser } from "@/lib/auth";
+import { getReviewPromptsForUser } from "@/lib/reviews";
 import { privateRouteMetadata } from "@/lib/seo";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+import { getProfile } from "@/lib/account/queries";
 
 export const metadata = privateRouteMetadata;
 
@@ -14,7 +14,7 @@ export default async function AccountLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28 lg:px-8 lg:pt-32">
         {children}
@@ -22,19 +22,13 @@ export default async function AccountLayout({
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login?next=/account");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const reviewPrompts = await getReviewPromptsForUser(user.id);
+  const [profile, reviewPrompts] = await Promise.all([
+    getProfile(user.id),
+    getReviewPromptsForUser(user.id),
+  ]);
   const awaitingReview = reviewPrompts.filter((p) => !p.existingReview).length;
 
   return (

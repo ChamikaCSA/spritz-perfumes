@@ -1,19 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/seo/json-ld";
-import { ProductCard } from "@/components/store/product-card";
-import { ProductGallery } from "@/components/store/product-gallery";
-import { ProductReviews } from "@/components/store/product-reviews";
-import { NotePyramid } from "@/components/store/note-pyramid";
-import { StarRating } from "@/components/store/star-rating";
-import { VariantPicker } from "@/components/store/variant-picker";
-import { WishlistToggle } from "@/components/store/wishlist-toggle";
-import {
-  getApprovedReviews,
-  getProductBySlug,
-  getRelatedProducts,
-  getStockSummary,
-} from "@/lib/catalog";
+import { ProductCard } from "@/components/store/catalog/product-card";
+import { ProductGallery } from "@/components/store/product/product-gallery";
+import { ProductReviews } from "@/components/store/product/product-reviews";
+import { NotePyramid } from "@/components/store/product/note-pyramid";
+import { StarRating } from "@/components/store/product/star-rating";
+import { VariantPicker } from "@/components/store/product/variant-picker";
+import { WishlistToggle } from "@/components/store/product/wishlist-toggle";
+import { getProductBySlug, getRelatedProducts } from "@/lib/catalog";
+import { getStockSummary } from "@/lib/inventory";
+import { getApprovedReviews } from "@/lib/reviews";
 import { breadcrumbJsonLd, buildMetadata, productJsonLd } from "@/lib/seo";
 
 type Params = Promise<{ slug: string }>;

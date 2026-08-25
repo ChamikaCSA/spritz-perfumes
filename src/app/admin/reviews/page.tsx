@@ -5,27 +5,19 @@ import {
   AdminPanel,
   adminRowActionClass,
   adminRowActionPrimaryClass,
-} from "@/components/admin/admin-shell";
-import { AdminStatus } from "@/components/admin/admin-status";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { AdminStatus } from "@/components/admin/layout/admin-status";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import {
+  getAdminReviewsPage,
+  type AdminReviewRow,
+} from "@/lib/reviews";
+import { isDemoMode } from "@/lib/supabase/env";
 
 export const metadata = { title: "Reviews · Admin" };
 
-type ReviewRow = {
-  id: string;
-  user_id: string;
-  rating: number;
-  title: string | null;
-  body: string | null;
-  is_approved: boolean;
-  created_at: string;
-  products: { name: string } | { name: string }[] | null;
-};
-
-function productName(review: ReviewRow) {
+function productName(review: AdminReviewRow) {
   const p = review.products;
   if (!p) return "Product";
   return Array.isArray(p) ? p[0]?.name ?? "Product" : p.name;
@@ -41,7 +33,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div>
         <AdminPageHeader
@@ -54,48 +46,10 @@ export default async function AdminReviewsPage({
 
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const { from, to } = pageRange(page, PAGE_SIZE.admin);
-  const supabase = await createClient();
-  const [{ data: pendingRows }, { data: publishedRows, count: publishedCount }] =
-    await Promise.all([
-      supabase
-        .from("reviews")
-        .select(
-          "id, user_id, rating, title, body, is_approved, created_at, products(name)",
-        )
-        .eq("is_approved", false)
-        .order("created_at", { ascending: false })
-        .limit(100),
-      supabase
-        .from("reviews")
-        .select(
-          "id, user_id, rating, title, body, is_approved, created_at, products(name)",
-          { count: "exact" },
-        )
-        .eq("is_approved", true)
-        .order("created_at", { ascending: false })
-        .range(from, to),
-    ]);
-
-  const pending = (pendingRows ?? []) as unknown as ReviewRow[];
-  const publishedResult = pageFromTotal(
-    (publishedRows ?? []) as unknown as ReviewRow[],
-    publishedCount ?? 0,
-    page,
-    PAGE_SIZE.admin,
-  );
+  const { pending, published: publishedResult, profiles } =
+    await getAdminReviewsPage(page, PAGE_SIZE.admin);
   const published = publishedResult.items;
-  const userIds = [...new Set([...pending, ...published].map((r) => r.user_id))];
-  const { data: profiles } = userIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
-
-  const profileMap = new Map(
-    (profiles ?? []).map((p) => [p.id, p] as const),
-  );
+  const profileMap = new Map(profiles.map((p) => [p.id, p] as const));
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -141,7 +95,7 @@ function ReviewList({
   profileMap,
 }: {
   id?: string;
-  reviews: ReviewRow[];
+  reviews: AdminReviewRow[];
   profileMap: Map<
     string,
     { id: string; full_name: string | null; email: string | null }

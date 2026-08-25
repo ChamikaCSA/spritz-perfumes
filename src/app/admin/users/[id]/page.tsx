@@ -4,10 +4,10 @@ import {
   AdminPageHeader,
   AdminPanel,
   adminTextLinkClass,
-} from "@/components/admin/admin-shell";
-import { AdminStatus, orderStatusTone } from "@/components/admin/admin-status";
-import { createClient } from "@/lib/supabase/server";
-import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { AdminStatus, orderStatusTone } from "@/components/admin/layout/admin-status";
+import { getAdminUserDetail } from "@/lib/admin";
+import { formatLkr } from "@/lib/commerce";
 import { notFound } from "next/navigation";
 
 type Params = Promise<{ id: string }>;
@@ -17,20 +17,10 @@ export default async function AdminUserDetailPage({
 }: {
   params: Params;
 }) {
-  if (!isSupabaseConfigured()) notFound();
   const { id } = await params;
-  const supabase = await createClient();
-  const [{ data: profile }, { data: orders }, { data: addresses }] =
-    await Promise.all([
-      supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-      supabase
-        .from("orders")
-        .select("id, order_number, status, total_lkr, created_at")
-        .eq("user_id", id)
-        .order("created_at", { ascending: false }),
-      supabase.from("addresses").select("*").eq("user_id", id),
-    ]);
-  if (!profile) notFound();
+  const detail = await getAdminUserDetail(id);
+  if (!detail) notFound();
+  const { profile, orders, addresses } = detail;
 
   return (
     <div className="space-y-5 sm:space-y-8">

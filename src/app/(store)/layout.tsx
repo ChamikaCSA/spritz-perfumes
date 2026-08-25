@@ -1,7 +1,7 @@
-import { CartDrawer } from "@/components/store/cart-drawer";
-import { NavigationFeedback } from "@/components/store/navigation-feedback";
-import { SiteFooter } from "@/components/store/site-footer";
-import { SiteHeader } from "@/components/store/site-header";
+import { CartDrawer } from "@/components/store/layout/cart-drawer";
+import { NavigationFeedback } from "@/components/store/layout/navigation-feedback";
+import { SiteFooter } from "@/components/store/layout/site-footer";
+import { SiteHeader } from "@/components/store/layout/site-header";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 

@@ -1,16 +1,16 @@
 import { adjustInventory, receiveInventory } from "@/actions/admin";
-import { AdminFormDialog } from "@/components/admin/admin-form-dialog";
+import { AdminFormDialog } from "@/components/admin/form/admin-form-dialog";
 import {
   AdminField,
   AdminFieldGrid,
   AdminForm,
   AdminFormSection,
   adminFieldClass,
-} from "@/components/admin/admin-form";
+} from "@/components/admin/form/admin-form";
 import {
   OpenLotButton,
   ResealLotButton,
-} from "@/components/admin/open-lot-button";
+} from "@/components/admin/inventory/open-lot-button";
 import {
   AdminEmpty,
   AdminPageHeader,
@@ -18,12 +18,12 @@ import {
   AdminActions,
   adminButtonClass,
   adminGhostButtonClass,
-} from "@/components/admin/admin-shell";
-import { AdminStatus, lotStatusTone } from "@/components/admin/admin-status";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { AdminStatus, lotStatusTone } from "@/components/admin/layout/admin-status";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getAdminInventoryPage } from "@/lib/inventory";
+import { parsePage } from "@/lib/pagination";
+import { isDemoMode } from "@/lib/supabase/env";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Inventory · Admin" };
@@ -33,7 +33,7 @@ export default async function AdminInventoryPage({
 }: {
   searchParams: Promise<{ page?: string; events?: string }>;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div>
         <AdminPageHeader
@@ -47,38 +47,11 @@ export default async function AdminInventoryPage({
   const params = await searchParams;
   const lotsPage = parsePage(params.page);
   const eventsPage = parsePage(params.events);
-  const lotsRange = pageRange(lotsPage, PAGE_SIZE.admin);
-  const eventsRange = pageRange(eventsPage, PAGE_SIZE.inventoryEvents);
-  const supabase = await createClient();
-  const [
-    { data: products },
-    { data: lots, count: lotsCount },
-    { data: events, count: eventsCount },
-  ] = await Promise.all([
-    supabase.from("products").select("id, name, brands(name)").order("name"),
-    supabase
-      .from("inventory_lots")
-      .select("*, products(name, brands(name))", { count: "exact" })
-      .order("received_at", { ascending: false })
-      .range(lotsRange.from, lotsRange.to),
-    supabase
-      .from("inventory_events")
-      .select("*, products(name)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(eventsRange.from, eventsRange.to),
-  ]);
-  const lotsResult = pageFromTotal(
-    lots ?? [],
-    lotsCount ?? 0,
-    lotsPage,
-    PAGE_SIZE.admin,
-  );
-  const eventsResult = pageFromTotal(
-    events ?? [],
-    eventsCount ?? 0,
-    eventsPage,
-    PAGE_SIZE.inventoryEvents,
-  );
+  const {
+    products,
+    lots: lotsResult,
+    events: eventsResult,
+  } = await getAdminInventoryPage(lotsPage, eventsPage);
 
   return (
     <div className="space-y-5 sm:space-y-8">

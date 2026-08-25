@@ -1,36 +1,23 @@
-import { redirect } from "next/navigation";
 import { deleteAddress, updateAddress } from "@/actions/store";
-import { AddAddressForm } from "@/components/store/add-address-form";
-import { ProfileDetails } from "@/components/store/profile-details";
+import { AddAddressForm } from "@/components/store/account/add-address-form";
+import { ProfileDetails } from "@/components/store/account/profile-details";
 import {
   AccountEmpty,
   AccountPageHeader,
   AccountPanel,
   accountGhostButtonClass,
-} from "@/components/store/account-shell";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/store/account/account-shell";
+import { getAddressesForUser, getProfile } from "@/lib/account/queries";
+import { getAccountUser } from "@/lib/auth";
 
 export const metadata = { title: "Profile · Account" };
 
 export default async function AccountProfilePage() {
-  if (!isSupabaseConfigured()) redirect("/account");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/account/profile");
-
-  const [{ data: profile }, { data: addresses }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-    supabase
-      .from("addresses")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("is_default", { ascending: false }),
+  const user = await getAccountUser("/account/profile");
+  const [profile, list] = await Promise.all([
+    getProfile(user.id),
+    getAddressesForUser(user.id),
   ]);
-
-  const list = addresses ?? [];
 
   return (
     <div className="space-y-5 sm:space-y-8">

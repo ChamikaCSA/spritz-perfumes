@@ -1,15 +1,14 @@
-import { redirect } from "next/navigation";
-import { AccountReturnForm } from "@/components/store/account-return-form";
+import { AccountReturnForm } from "@/components/store/account/account-return-form";
 import {
   AccountEmpty,
   AccountPageHeader,
   AccountStatus,
-} from "@/components/store/account-shell";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { getReturnableOrdersForUser } from "@/lib/catalog";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/store/account/account-shell";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getReturnRequestsForUser } from "@/lib/account/queries";
+import { getAccountUser } from "@/lib/auth";
+import { getReturnableOrdersForUser } from "@/lib/orders";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
 
 export const metadata = { title: "Returns · Account" };
 
@@ -18,25 +17,14 @@ export default async function AccountReturnsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) redirect("/account");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/account/returns");
+  const user = await getAccountUser("/account/returns");
 
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const { from, to } = pageRange(page, PAGE_SIZE.account);
-  const returnable = await getReturnableOrdersForUser(user.id);
-  const { data: returns, count } = await supabase
-    .from("return_requests")
-    .select("*, orders(order_number)", { count: "exact" })
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  const result = pageFromTotal(returns ?? [], count ?? 0, page, PAGE_SIZE.account);
+  const [returnable, result] = await Promise.all([
+    getReturnableOrdersForUser(user.id),
+    getReturnRequestsForUser(user.id, page, PAGE_SIZE.account),
+  ]);
   const list = result.items;
 
   return (
@@ -53,7 +41,7 @@ export default async function AccountReturnsPage({
           <>
             <ul id="results" className="scroll-mt-24 divide-y divide-border/50">
               {list.map((r) => {
-                const order = r.orders as { order_number: string } | null;
+                const order = Array.isArray(r.orders) ? r.orders[0] : r.orders;
                 return (
                   <li key={r.id} className="py-3 first:pt-0 last:pb-0 sm:py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">

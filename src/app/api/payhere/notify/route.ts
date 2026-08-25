@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { verifyPayHereNotify } from "@/lib/payhere";
+import { verifyPayHereNotify } from "@/lib/payments/payhere";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+import type { Json } from "@/lib/supabase/database.types";
+import { isDemoMode } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -29,12 +30,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return NextResponse.json({ ok: true, demo: true });
   }
 
   const service = createServiceClient();
-  const raw = Object.fromEntries(form.entries());
+  const raw = Object.fromEntries(
+    [...form.entries()].map(([key, value]) => [key, String(value)]),
+  ) as Json;
 
   const { data: payment } = await service
     .from("payments")

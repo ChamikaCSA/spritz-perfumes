@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { BRAND_CONTACT, BRAND_SOCIAL } from "@/lib/brand";
-import type { Brand, Product, Review, StockSummary } from "@/lib/types";
+import { BRAND_CONTACT, BRAND_SOCIAL } from "@/lib/site";
+import type { Brand, Product, Review, StockSummary } from "@/types";
 
 export const siteConfig = {
   name: "Spritz Perfumes",

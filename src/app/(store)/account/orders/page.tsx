@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   AccountEmpty,
   AccountPageHeader,
   AccountStatus,
-} from "@/components/store/account-shell";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { getOrderPageForUser } from "@/lib/catalog";
+} from "@/components/store/account/account-shell";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getAccountUser } from "@/lib/auth";
+import { formatLkr } from "@/lib/commerce";
+import { getOrderPageForUser } from "@/lib/orders";
 import { PAGE_SIZE, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
 
 export const metadata = { title: "Orders · Account" };
 
@@ -24,12 +23,7 @@ export default async function AccountOrdersPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) redirect("/account");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/account/orders");
+  const user = await getAccountUser("/account/orders");
 
   const { page: pageParam } = await searchParams;
   const result = await getOrderPageForUser(

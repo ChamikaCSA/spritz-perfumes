@@ -3,17 +3,17 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/seo/json-ld";
-import { PaginationNav } from "@/components/store/pagination-nav";
+import { PaginationNav } from "@/components/shared/pagination-nav";
 import {
   CatalogProductResults,
   CatalogStyleProvider,
   CatalogStyleToggle,
-} from "@/components/store/catalog-style";
+} from "@/components/store/catalog/catalog-style";
 import { getBrandBySlug, getProductPage } from "@/lib/catalog";
 import {
   CATALOG_STYLE_COOKIE,
   parseCatalogStyle,
-} from "@/lib/catalog-style";
+} from "@/lib/catalog/style";
 import { PAGE_SIZE, parsePage } from "@/lib/pagination";
 import {
   brandJsonLd,

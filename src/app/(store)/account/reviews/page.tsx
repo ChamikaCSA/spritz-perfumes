@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
-import { AccountReviewCard } from "@/components/store/account-review-card";
+import { AccountReviewCard } from "@/components/store/account/account-review-card";
 import {
   AccountEmpty,
   AccountPageHeader,
-} from "@/components/store/account-shell";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { getReviewPromptsForUser } from "@/lib/catalog";
+} from "@/components/store/account/account-shell";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getAccountUser } from "@/lib/auth";
 import { PAGE_SIZE, paginate, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+import { getReviewPromptsForUser } from "@/lib/reviews";
 
 export const metadata = { title: "Reviews · Account" };
 
@@ -17,12 +15,7 @@ export default async function AccountReviewsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) redirect("/account");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/account/reviews");
+  const user = await getAccountUser("/account/reviews");
 
   const { page: pageParam } = await searchParams;
   const prompts = await getReviewPromptsForUser(user.id);

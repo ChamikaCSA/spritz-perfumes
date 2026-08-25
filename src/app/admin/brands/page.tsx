@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { deleteBrand, upsertBrand } from "@/actions/admin";
-import { AdminFormDialog } from "@/components/admin/admin-form-dialog";
-import { AdminDeleteForm } from "@/components/admin/admin-delete-form";
+import { AdminFormDialog } from "@/components/admin/form/admin-form-dialog";
+import { AdminDeleteForm } from "@/components/admin/form/admin-delete-form";
 import {
   AdminField,
   AdminFieldGrid,
@@ -10,17 +10,17 @@ import {
   AdminFormSection,
   adminFieldClass,
   adminTextareaClass,
-} from "@/components/admin/admin-form";
+} from "@/components/admin/form/admin-form";
 import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
   adminButtonClass,
-} from "@/components/admin/admin-shell";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getBrandPage } from "@/lib/catalog";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import { isDemoMode } from "@/lib/supabase/env";
 
 export const metadata = { title: "Brands · Admin" };
 
@@ -29,7 +29,7 @@ export default async function AdminBrandsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div>
         <AdminPageHeader
@@ -42,14 +42,7 @@ export default async function AdminBrandsPage({
 
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const { from, to } = pageRange(page, PAGE_SIZE.admin);
-  const supabase = await createClient();
-  const { data: brands, count } = await supabase
-    .from("brands")
-    .select("*", { count: "exact" })
-    .order("name")
-    .range(from, to);
-  const result = pageFromTotal(brands ?? [], count ?? 0, page, PAGE_SIZE.admin);
+  const result = await getBrandPage(page, PAGE_SIZE.admin);
 
   return (
     <div className="space-y-5 sm:space-y-8">

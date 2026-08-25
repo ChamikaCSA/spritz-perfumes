@@ -1,32 +1,20 @@
 import Link from "next/link";
-import { OrderFulfillmentPanel } from "@/components/admin/order-fulfillment-panel";
+import { OrderFulfillmentPanel } from "@/components/admin/orders/order-fulfillment-panel";
 import {
   AdminPageHeader,
   AdminPanel,
   adminRowActionClass,
   adminTextLinkClass,
-} from "@/components/admin/admin-shell";
-import { createClient } from "@/lib/supabase/server";
-import {
-  formatLkr,
-  isSupabaseConfigured,
-  variantLabel,
-} from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { formatLkr, variantLabel } from "@/lib/commerce";
+import { getAdminOrderDetail } from "@/lib/orders";
 import { notFound } from "next/navigation";
 
 type Params = Promise<{ id: string }>;
 
 export async function generateMetadata({ params }: { params: Params }) {
   const { id } = await params;
-  if (!isSupabaseConfigured()) return { title: "Order · Admin" };
-
-  const supabase = await createClient();
-  const { data: order } = await supabase
-    .from("orders")
-    .select("order_number")
-    .eq("id", id)
-    .maybeSingle();
-
+  const order = await getAdminOrderDetail(id);
   return {
     title: order ? `${order.order_number} · Admin` : "Order · Admin",
   };
@@ -37,32 +25,12 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Params;
 }) {
-  if (!isSupabaseConfigured()) notFound();
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: order } = await supabase
-    .from("orders")
-    .select("*, order_items(*), payments(payhere_payment_id, status, method)")
-    .eq("id", id)
-    .maybeSingle();
-
+  const order = await getAdminOrderDetail(id);
   if (!order) notFound();
 
-  const payments = (order.payments ?? []) as {
-    payhere_payment_id: string | null;
-    status: string;
-    method: string | null;
-  }[];
-  const payment = payments[0];
-  const items = (order.order_items ?? []) as {
-    id: string;
-    product_name: string;
-    brand_name: string;
-    variant_type: string;
-    size_ml: number;
-    quantity: number;
-    line_total_lkr: number;
-  }[];
+  const payment = order.payments[0];
+  const items = order.items ?? [];
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -76,7 +44,7 @@ export default async function AdminOrderDetailPage({
           orderId={order.id}
           orderNumber={order.order_number}
           status={order.status}
-          trackingNumber={order.tracking_number}
+          trackingNumber={order.tracking_number ?? null}
         />
       </AdminPanel>
 

@@ -4,19 +4,17 @@ import {
   AccountPageHeader,
   AccountPanel,
   AccountStatus,
-} from "@/components/store/account-shell";
-import {
-  countOrdersForUser,
-  getOrdersForUser,
-  getReviewPromptsForUser,
-} from "@/lib/catalog";
-import { createClient } from "@/lib/supabase/server";
-import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/store/account/account-shell";
+import { countAddressesForUser, getProfile } from "@/lib/account/queries";
+import { getSessionUser, isDemoMode } from "@/lib/auth";
+import { formatLkr } from "@/lib/commerce";
+import { countOrdersForUser, getOrdersForUser } from "@/lib/orders";
+import { getReviewPromptsForUser } from "@/lib/reviews";
 
 export const metadata = { title: "Account" };
 
 export default async function AccountPage() {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div className="py-16 text-center">
         <h1 className="font-display text-5xl">Account</h1>
@@ -27,26 +25,16 @@ export default async function AccountPage() {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return null;
 
-  const [{ data: profile }, orderCount, recentOrders, reviewPrompts, { count: addressCount }] =
+  const [profile, orderCount, recentOrders, reviewPrompts, addressCount] =
     await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .maybeSingle(),
+      getProfile(user.id),
       countOrdersForUser(user.id),
       getOrdersForUser(user.id, { limit: 4, includeItems: false }),
       getReviewPromptsForUser(user.id),
-      supabase
-        .from("addresses")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id),
+      countAddressesForUser(user.id),
     ]);
 
   const awaitingReview = reviewPrompts.filter((p) => !p.existingReview);
@@ -89,7 +77,7 @@ export default async function AccountPage() {
             Addresses
           </p>
           <p className="mt-2 font-display text-2xl tabular-nums sm:mt-3 sm:text-4xl">
-            {addressCount ?? 0}
+            {addressCount}
           </p>
         </Link>
       </div>

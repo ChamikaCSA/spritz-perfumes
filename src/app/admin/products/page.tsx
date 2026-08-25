@@ -1,21 +1,21 @@
 import { deleteProduct, upsertProduct } from "@/actions/admin";
-import { AdminFormDialog } from "@/components/admin/admin-form-dialog";
-import { AdminDeleteForm } from "@/components/admin/admin-delete-form";
-import { CatalogCsvImport } from "@/components/admin/catalog-csv-import";
-import { ProductFormFields } from "@/components/admin/product-form-fields";
-import { AdminForm } from "@/components/admin/admin-form";
+import { AdminFormDialog } from "@/components/admin/form/admin-form-dialog";
+import { AdminDeleteForm } from "@/components/admin/form/admin-delete-form";
+import { CatalogCsvImport } from "@/components/admin/catalog/catalog-csv-import";
+import { ProductFormFields } from "@/components/admin/catalog/product-form-fields";
+import { AdminForm } from "@/components/admin/form/admin-form";
 import {
   AdminEmpty,
   AdminPageHeader,
   AdminPanel,
   adminButtonClass,
-} from "@/components/admin/admin-shell";
-import { AdminStatus } from "@/components/admin/admin-status";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { DEMO_PRODUCTS } from "@/lib/demo-data";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { AdminStatus } from "@/components/admin/layout/admin-status";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getAdminProductsPage } from "@/lib/catalog";
+import { DEMO_PRODUCTS } from "@/lib/catalog/demo";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import { isDemoMode } from "@/lib/supabase/env";
 
 export const metadata = { title: "Products · Admin" };
 
@@ -24,7 +24,7 @@ export default async function AdminProductsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div className="space-y-5 sm:space-y-8">
         <AdminPageHeader
@@ -52,22 +52,7 @@ export default async function AdminProductsPage({
 
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const { from, to } = pageRange(page, PAGE_SIZE.admin);
-  const supabase = await createClient();
-  const [{ data: brands }, { data: products, count }] = await Promise.all([
-    supabase.from("brands").select("id, name").order("name"),
-    supabase
-      .from("products")
-      .select("*, brands(name), product_variants(*)", { count: "exact" })
-      .order("name")
-      .range(from, to),
-  ]);
-  const result = pageFromTotal(products ?? [], count ?? 0, page, PAGE_SIZE.admin);
-
-  const brandOptions = (brands ?? []).map((brand) => ({
-    id: brand.id,
-    name: brand.name,
-  }));
+  const { result, brandOptions } = await getAdminProductsPage(page, PAGE_SIZE.admin);
 
   return (
     <div className="space-y-5 sm:space-y-8">

@@ -1,15 +1,15 @@
 import { cookies } from "next/headers";
-import { PaginationNav } from "@/components/store/pagination-nav";
+import { PaginationNav } from "@/components/shared/pagination-nav";
 import {
   CatalogBrandResults,
   CatalogStyleProvider,
   CatalogStyleToggle,
-} from "@/components/store/catalog-style";
+} from "@/components/store/catalog/catalog-style";
 import { getBrandPage } from "@/lib/catalog";
 import {
   CATALOG_STYLE_COOKIE,
   parseCatalogStyle,
-} from "@/lib/catalog-style";
+} from "@/lib/catalog/style";
 import { PAGE_SIZE, parsePage } from "@/lib/pagination";
 import { buildMetadata } from "@/lib/seo";
 

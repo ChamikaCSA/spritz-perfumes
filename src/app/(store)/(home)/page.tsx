@@ -1,12 +1,12 @@
-import { HomeBestSellers } from "@/components/store/home-best-sellers";
-import { HomeBuyPath } from "@/components/store/home-buy-path";
-import { HomeHero } from "@/components/store/home-hero";
+import { HomeBestSellers } from "@/components/store/home/home-best-sellers";
+import { HomeBuyPath } from "@/components/store/home/home-buy-path";
+import { HomeHero } from "@/components/store/home/home-hero";
 import {
   HomeBrandGrid,
   HomeNewsletter,
   HomeProductRail,
-} from "@/components/store/home-sections";
-import { HousesMarquee } from "@/components/store/houses-marquee";
+} from "@/components/store/home/home-sections";
+import { HousesMarquee } from "@/components/store/home/houses-marquee";
 import {
   getBestSellers,
   getBrands,

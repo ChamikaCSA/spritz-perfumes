@@ -4,12 +4,13 @@ import {
   AdminPageHeader,
   AdminPanel,
   adminRowActionClass,
-} from "@/components/admin/admin-shell";
-import { AdminStatus } from "@/components/admin/admin-status";
-import { PaginationNav } from "@/components/store/pagination-nav";
-import { PAGE_SIZE, pageFromTotal, pageRange, parsePage } from "@/lib/pagination";
-import { createClient } from "@/lib/supabase/server";
-import { formatLkr, isSupabaseConfigured } from "@/lib/utils-commerce";
+} from "@/components/admin/layout/admin-shell";
+import { AdminStatus } from "@/components/admin/layout/admin-status";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { getAdminUsersPage } from "@/lib/admin";
+import { formatLkr } from "@/lib/commerce";
+import { PAGE_SIZE, parsePage } from "@/lib/pagination";
+import { isDemoMode } from "@/lib/supabase/env";
 
 export const metadata = { title: "Users · Admin" };
 
@@ -18,7 +19,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (isDemoMode()) {
     return (
       <div>
         <AdminPageHeader
@@ -31,32 +32,7 @@ export default async function AdminUsersPage({
 
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const { from, to } = pageRange(page, PAGE_SIZE.admin);
-  const supabase = await createClient();
-  const { data: profiles, count } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
-  const result = pageFromTotal(profiles ?? [], count ?? 0, page, PAGE_SIZE.admin);
-  const userIds = result.items.map((p) => p.id);
-  const { data: orders } = userIds.length
-    ? await supabase
-        .from("orders")
-        .select("user_id, total_lkr, status")
-        .in("user_id", userIds)
-    : { data: [] as { user_id: string | null; total_lkr: number; status: string }[] };
-
-  const spend = new Map<string, { count: number; total: number }>();
-  for (const o of orders ?? []) {
-    if (!o.user_id) continue;
-    if (!["paid", "packing", "shipped", "delivered"].includes(o.status))
-      continue;
-    const cur = spend.get(o.user_id) ?? { count: 0, total: 0 };
-    cur.count += 1;
-    cur.total += Number(o.total_lkr);
-    spend.set(o.user_id, cur);
-  }
+  const result = await getAdminUsersPage(page, PAGE_SIZE.admin);
 
   return (
     <div className="space-y-5 sm:space-y-8">
@@ -71,7 +47,7 @@ export default async function AdminUsersPage({
             <div id="results" className="scroll-mt-20">
             <ul className="divide-y divide-border/50 md:hidden">
               {result.items.map((p) => {
-                const stats = spend.get(p.id) ?? { count: 0, total: 0 };
+                const stats = { count: p.orderCount, total: p.lifetimeSpend };
                 return (
                   <li
                     key={p.id}
@@ -120,7 +96,7 @@ export default async function AdminUsersPage({
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {result.items.map((p) => {
-                    const stats = spend.get(p.id) ?? { count: 0, total: 0 };
+                    const stats = { count: p.orderCount, total: p.lifetimeSpend };
                     return (
                       <tr key={p.id}>
                         <td className="px-3 py-2 font-medium">

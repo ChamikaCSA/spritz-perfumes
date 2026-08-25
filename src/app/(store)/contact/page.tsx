@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BRAND_CONTACT, BRAND_SOCIAL } from "@/lib/brand";
+import { BRAND_CONTACT, BRAND_SOCIAL } from "@/lib/site";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({

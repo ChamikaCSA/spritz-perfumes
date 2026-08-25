@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generatePayHereHash, getPayHereMerchantId } from "@/lib/payhere";
+import { generatePayHereHash, getPayHereMerchantId } from "@/lib/payments/payhere";
 
 const schema = z.object({
   orderId: z.string().min(1),

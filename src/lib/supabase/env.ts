@@ -17,3 +17,7 @@ export function isSupabaseConfigured() {
   const key = getSupabasePublishableKey();
   return Boolean(url && key && !url.includes("your-project"));
 }
+
+export function isDemoMode() {
+  return !isSupabaseConfigured();
+}

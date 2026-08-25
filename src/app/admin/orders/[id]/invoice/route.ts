@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { getOrderById } from "@/lib/catalog";
+import { getOrderById } from "@/lib/orders";
 import {
   buildInvoicePdf,
   orderDocumentFilename,
   pdfResponse,
-} from "@/lib/order-pdfs";
+} from "@/lib/orders/pdfs";
 
 type Params = Promise<{ id: string }>;
 
